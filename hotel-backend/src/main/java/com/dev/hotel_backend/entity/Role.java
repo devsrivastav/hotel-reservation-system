@@ -1,10 +1,15 @@
 package com.dev.hotel_backend.entity;
 
-
 import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Table(name = "roles")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Role {
 
     @Id
@@ -15,4 +20,3 @@ public class Role {
     @Column(nullable = false, unique = true)
     private RoleName name;
 }
-
