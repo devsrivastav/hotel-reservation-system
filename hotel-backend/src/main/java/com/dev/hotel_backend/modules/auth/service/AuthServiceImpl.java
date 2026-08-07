@@ -6,8 +6,11 @@ import com.dev.hotel_backend.dto.response.AuthResponse;
 import com.dev.hotel_backend.entity.Role;
 import com.dev.hotel_backend.entity.RoleName;
 import com.dev.hotel_backend.entity.User;
+import com.dev.hotel_backend.exception.BadRequestException;
+import com.dev.hotel_backend.exception.ResourceNotFoundException;
 import com.dev.hotel_backend.repository.RoleRepository;
 import com.dev.hotel_backend.repository.UserRepository;
+import com.dev.hotel_backend.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,16 +22,17 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     @Override
     public AuthResponse register(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new BadRequestException("Email already exists");
         }
 
         Role role = roleRepository.findByName(RoleName.ROLE_CUSTOMER)
-                .orElseThrow(() -> new RuntimeException("Default role not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Default role not found"));
 
         User user = User.builder()
                 .firstName(request.getFirstName())
@@ -41,19 +45,28 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         userRepository.save(user);
-
+        String token = jwtService.generateToken(user);
         return AuthResponse.builder()
                 .message("User Registered Successfully")
-                .token("")
+                .token("token")
                 .build();
     }
 
     @Override
     public AuthResponse login(LoginRequest request) {
 
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("Invalid Email"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new BadRequestException("Invalid Password");
+        }
+
+        String token = jwtService.generateToken(user);
+
         return AuthResponse.builder()
-                .message("Login Coming Soon")
-                .token("")
+                .message("Login Successful")
+                .token(token)
                 .build();
     }
 }
