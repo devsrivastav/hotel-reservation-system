@@ -11,7 +11,8 @@ import java.time.LocalTime;
 @AllArgsConstructor
 @Builder
 public class HotelResponse {
-
+    private Double averageRating;
+    private Long totalReviews;
     private Long id;
     private String name;
     private String description;

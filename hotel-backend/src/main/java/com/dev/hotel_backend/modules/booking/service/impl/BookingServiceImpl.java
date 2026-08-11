@@ -14,9 +14,11 @@ import com.dev.hotel_backend.modules.room.entity.Room;
 import com.dev.hotel_backend.modules.room.repository.RoomRepository;
 import com.dev.hotel_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import com.dev.hotel_backend.modules.email.service.EmailService;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -27,14 +29,17 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     @Override
     public BookingResponse createBooking(CreateBookingRequest request, String userEmail) {
 
+        // Fetch User
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found"));
 
+        // Fetch Room
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Room not found"));
@@ -43,6 +48,11 @@ public class BookingServiceImpl implements BookingService {
         if (!request.getCheckOutDate().isAfter(request.getCheckInDate())) {
             throw new BadRequestException(
                     "Check-out date must be after check-in date.");
+        }
+
+        if (request.getCheckInDate().isBefore(LocalDate.now())) {
+            throw new BadRequestException(
+                    "Check-in date cannot be in the past.");
         }
 
         // Guest Capacity Validation
@@ -57,25 +67,22 @@ public class BookingServiceImpl implements BookingService {
                         room.getId(),
                         BookingStatus.CANCELLED,
                         request.getCheckOutDate(),
-                        request.getCheckInDate()
-                );
+                        request.getCheckInDate());
 
         if (alreadyBooked) {
             throw new BadRequestException(
                     "Room is already booked for the selected dates.");
         }
 
+        // Calculate Nights
         long nights = ChronoUnit.DAYS.between(
                 request.getCheckInDate(),
                 request.getCheckOutDate());
 
-        if (nights <= 0) {
-            throw new BadRequestException(
-                    "Invalid check-in/check-out date.");
-        }
-
         BigDecimal totalPrice = room.getPricePerNight()
                 .multiply(BigDecimal.valueOf(nights));
+
+        // Create Booking
 
         Booking booking = Booking.builder()
                 .user(user)
@@ -87,8 +94,15 @@ public class BookingServiceImpl implements BookingService {
                 .status(BookingStatus.CONFIRMED)
                 .build();
 
-        bookingRepository.save(booking);
-
+        booking = bookingRepository.save(booking);
+        //email
+        emailService.sendBookingConfirmation(
+                user.getEmail(),
+                booking.getRoom().getHotel().getName(),
+                booking.getRoom().getRoomNumber(),
+                booking.getCheckInDate().toString(),
+                booking.getCheckOutDate().toString()
+        );
         return BookingMapper.toResponse(booking);
     }
 
@@ -134,6 +148,11 @@ public class BookingServiceImpl implements BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
 
-        bookingRepository.save(booking);
+        booking = bookingRepository.save(booking);
+
+        emailService.sendBookingCancellation(
+                booking.getUser().getEmail(),
+                booking.getRoom().getHotel().getName()
+        );
     }
 }

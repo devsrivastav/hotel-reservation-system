@@ -26,15 +26,17 @@ public class Payment {
     private Booking booking;
 
     @Column(nullable = false)
-    private String orderId;
-
-    private String paymentId;
-
-    @Column(nullable = false)
     private BigDecimal amount;
 
     @Column(nullable = false)
     private String currency;
+
+    @Column(nullable = false)
+    private String razorpayOrderId;
+
+    private String razorpayPaymentId;
+
+    private String razorpaySignature;
 
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;

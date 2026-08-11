@@ -13,14 +13,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import com.dev.hotel_backend.exception.ResourceNotFoundException;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.dev.hotel_backend.modules.review.repository.ReviewRepository;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class HotelServiceImpl implements HotelService {
     private final FileStorageService fileStorageService;
-
+    private final ReviewRepository reviewRepository;
     private final HotelRepository hotelRepository;
 
     @Override
@@ -30,7 +30,7 @@ public class HotelServiceImpl implements HotelService {
 
         hotel = hotelRepository.save(hotel);
 
-        return HotelMapper.toResponse(hotel);
+        return HotelMapper.toResponse(hotel, 0.0, 0L);
     }
 
     @Override
@@ -54,7 +54,11 @@ public class HotelServiceImpl implements HotelService {
 
         hotel = hotelRepository.save(hotel);
 
-        return HotelMapper.toResponse(hotel);
+        return HotelMapper.toResponse(
+                hotel,
+                reviewRepository.getAverageRatingByHotelId(hotel.getId()),
+                reviewRepository.getTotalReviewsByHotelId(hotel.getId())
+        );
     }
 
     @Override
@@ -67,9 +71,20 @@ public class HotelServiceImpl implements HotelService {
     public HotelResponse getHotelById(Long id) {
 
         Hotel hotel = hotelRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Hotel not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Hotel not found"));
 
-        return HotelMapper.toResponse(hotel);
+        Double averageRating =
+                reviewRepository.getAverageRatingByHotelId(hotel.getId());
+
+        Long totalReviews =
+                reviewRepository.getTotalReviewsByHotelId(hotel.getId());
+
+        return HotelMapper.toResponse(
+                hotel,
+                averageRating,
+                totalReviews
+        );
     }
 
     @Override
@@ -77,7 +92,11 @@ public class HotelServiceImpl implements HotelService {
 
         return hotelRepository.findAll()
                 .stream()
-                .map(HotelMapper::toResponse)
+                .map(hotel -> HotelMapper.toResponse(
+                        hotel,
+                        reviewRepository.getAverageRatingByHotelId(hotel.getId()),
+                        reviewRepository.getTotalReviewsByHotelId(hotel.getId())
+                ))
                 .toList();
     }
 
@@ -86,7 +105,11 @@ public class HotelServiceImpl implements HotelService {
 
         return hotelRepository.findByCityIgnoreCase(city)
                 .stream()
-                .map(HotelMapper::toResponse)
+                .map(hotel -> HotelMapper.toResponse(
+                        hotel,
+                        reviewRepository.getAverageRatingByHotelId(hotel.getId()),
+                        reviewRepository.getTotalReviewsByHotelId(hotel.getId())
+                ))
                 .toList();
     }
 
@@ -95,9 +118,14 @@ public class HotelServiceImpl implements HotelService {
 
         return hotelRepository.findByNameContainingIgnoreCase(name)
                 .stream()
-                .map(HotelMapper::toResponse)
+                .map(hotel -> HotelMapper.toResponse(
+                        hotel,
+                        reviewRepository.getAverageRatingByHotelId(hotel.getId()),
+                        reviewRepository.getTotalReviewsByHotelId(hotel.getId())
+                ))
                 .toList();
     }
+
     @Override
     public String uploadHotelImage(Long hotelId, MultipartFile file) {
 
@@ -113,4 +141,6 @@ public class HotelServiceImpl implements HotelService {
 
         return imageUrl;
     }
+
+
 }

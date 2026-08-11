@@ -44,34 +44,36 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
 
-        http
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session ->
+        http.csrf(csrf -> csrf.disable()).sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authenticationProvider())
-                .authorizeHttpRequests(auth -> auth
+                .authenticationProvider(authenticationProvider()).authorizeHttpRequests(auth -> auth
+
+                        // Authentication
+                        .requestMatchers("/api/auth/**").permitAll()
+
+                        // Public APIs
                         .requestMatchers(
-                                // Authentication
-                                "/api/auth/**",
-
-                                // Public APIs
-                                "/api/hotels",
                                 "/api/hotels/**",
-                                "/api/rooms",
-                                "/api/rooms/**",
+                                "/api/rooms/**"
+                        ).permitAll()
 
-                                // Swagger
+                        // Admin APIs
+                        .requestMatchers("/api/admin/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_SUPER_ADMIN")
+
+                        // Swagger
+                        .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 );
-
         return http.build();
     }
 }

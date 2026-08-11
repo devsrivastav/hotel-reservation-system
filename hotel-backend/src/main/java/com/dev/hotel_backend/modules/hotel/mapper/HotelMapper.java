@@ -47,4 +47,30 @@ public class HotelMapper {
                 .updatedAt(hotel.getUpdatedAt())
                 .build();
     }
+
+    public static HotelResponse toResponse(
+            Hotel hotel,
+            Double averageRating,
+            Long totalReviews) {
+
+        return HotelResponse.builder()
+                .id(hotel.getId())
+                .name(hotel.getName())
+                .description(hotel.getDescription())
+                .address(hotel.getAddress())
+                .city(hotel.getCity())
+                .state(hotel.getState())
+                .country(hotel.getCountry())
+                .zipCode(hotel.getZipCode())
+                .phone(hotel.getPhone())
+                .email(hotel.getEmail())
+                .starRating(hotel.getStarRating())
+                .checkInTime(hotel.getCheckInTime())
+                .checkOutTime(hotel.getCheckOutTime())
+                .createdAt(hotel.getCreatedAt())
+                .updatedAt(hotel.getUpdatedAt())
+                .averageRating(averageRating)
+                .totalReviews(totalReviews)
+                .build();
+    }
 }

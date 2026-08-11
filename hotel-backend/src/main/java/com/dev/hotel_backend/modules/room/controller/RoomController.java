@@ -9,7 +9,12 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -62,5 +67,46 @@ public class RoomController {
             @RequestParam("file") MultipartFile file){
 
         return roomService.uploadRoomImage(id,file);
+    }
+
+    @GetMapping("/available")
+    public Page<RoomResponse> searchAvailableRooms(
+
+            @RequestParam(required = false) String city,
+
+            @RequestParam LocalDate checkIn,
+
+            @RequestParam LocalDate checkOut,
+
+            @RequestParam(required = false) Integer guests,
+
+            @RequestParam(required = false) BigDecimal minPrice,
+
+            @RequestParam(required = false) BigDecimal maxPrice,
+
+            @RequestParam(defaultValue = "0") int page,
+
+            @RequestParam(defaultValue = "10") int size,
+
+            @RequestParam(defaultValue = "pricePerNight") String sortBy,
+
+            @RequestParam(defaultValue = "asc") String direction
+    ) {
+
+        Sort sort = direction.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        return roomService.searchAvailableRooms(
+                city,
+                checkIn,
+                checkOut,
+                guests,
+                minPrice,
+                maxPrice,
+                pageable
+        );
     }
 }
