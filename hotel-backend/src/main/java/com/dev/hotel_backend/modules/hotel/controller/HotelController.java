@@ -6,11 +6,11 @@ import com.dev.hotel_backend.modules.hotel.dto.response.HotelResponse;
 import com.dev.hotel_backend.modules.hotel.service.HotelService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.security.access.prepost.PreAuthorize;
+
 import java.util.List;
-import org.springframework.http.MediaType;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/hotels")
@@ -18,64 +18,59 @@ import org.springframework.web.multipart.MultipartFile;
 public class HotelController {
 
     private final HotelService hotelService;
-    @PreAuthorize("hasRole('ADMIN')")
+
+    // Create Hotel
     @PostMapping
-    public HotelResponse createHotel(
-            @Valid @RequestBody CreateHotelRequest request) {
+    public ResponseEntity<HotelResponse> createHotel(
+            @Valid @RequestBody CreateHotelRequest request
+    ) {
+        HotelResponse response = hotelService.createHotel(request);
 
-        return hotelService.createHotel(request);
-    }
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping(
-            value="/{id}/image",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
-    public String uploadHotelImage(
-            @PathVariable Long id,
-            @RequestParam("file")MultipartFile file){
-
-        return hotelService.uploadHotelImage(id,file);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
+    // Get All Hotels
     @GetMapping
-    public List<HotelResponse> getAllHotels() {
+    public ResponseEntity<List<HotelResponse>> getAllHotels() {
 
-        return hotelService.getAllHotels();
+        return ResponseEntity.ok(
+                hotelService.getAllHotels()
+        );
     }
 
+    // Get Hotel By ID
     @GetMapping("/{id}")
-    public HotelResponse getHotelById(@PathVariable Long id) {
+    public ResponseEntity<HotelResponse> getHotelById(
+            @PathVariable Long id
+    ) {
 
-        return hotelService.getHotelById(id);
+        return ResponseEntity.ok(
+                hotelService.getHotelById(id)
+        );
     }
-    @PreAuthorize("hasRole('ADMIN')")
+
+    // Update Hotel
     @PutMapping("/{id}")
-    public HotelResponse updateHotel(
+    public ResponseEntity<HotelResponse> updateHotel(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateHotelRequest request) {
+            @Valid @RequestBody UpdateHotelRequest request
+    ) {
 
-        return hotelService.updateHotel(id, request);
+        return ResponseEntity.ok(
+                hotelService.updateHotel(id, request)
+        );
     }
-    @PreAuthorize("hasRole('ADMIN')")
+
+    // Delete Hotel
     @DeleteMapping("/{id}")
-    public String deleteHotel(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteHotel(
+            @PathVariable Long id
+    ) {
 
         hotelService.deleteHotel(id);
 
-        return "Hotel Deleted Successfully";
-    }
-
-    @GetMapping("/search/city")
-    public List<HotelResponse> searchByCity(
-            @RequestParam String city) {
-
-        return hotelService.searchByCity(city);
-    }
-
-    @GetMapping("/search/name")
-    public List<HotelResponse> searchByName(
-            @RequestParam String name) {
-
-        return hotelService.searchByName(name);
+        return ResponseEntity.noContent().build();
     }
 }

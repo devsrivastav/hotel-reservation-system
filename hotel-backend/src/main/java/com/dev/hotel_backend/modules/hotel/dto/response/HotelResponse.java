@@ -11,21 +11,42 @@ import java.time.LocalTime;
 @AllArgsConstructor
 @Builder
 public class HotelResponse {
-    private Double averageRating;
-    private Long totalReviews;
+
     private Long id;
+
     private String name;
+
     private String description;
+
     private String address;
+
     private String city;
+
     private String state;
+
     private String country;
+
     private String zipCode;
+
     private String phone;
+
     private String email;
+
     private Integer starRating;
+
     private LocalTime checkInTime;
+
     private LocalTime checkOutTime;
+
+    private String imageUrl;
+
+    private Boolean active;
+
     private LocalDateTime createdAt;
+
     private LocalDateTime updatedAt;
+
+    private Double averageRating;
+
+    private Long totalReviews;
 }

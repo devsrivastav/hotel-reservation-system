@@ -11,7 +11,6 @@ import com.dev.hotel_backend.modules.hotel.service.HotelService;
 import com.dev.hotel_backend.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import com.dev.hotel_backend.exception.ResourceNotFoundException;
 import org.springframework.web.multipart.MultipartFile;
 import com.dev.hotel_backend.modules.review.repository.ReviewRepository;
 import java.util.List;
@@ -19,6 +18,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class HotelServiceImpl implements HotelService {
+
     private final FileStorageService fileStorageService;
     private final ReviewRepository reviewRepository;
     private final HotelRepository hotelRepository;
@@ -104,13 +104,10 @@ public class HotelServiceImpl implements HotelService {
     public List<HotelResponse> searchByCity(String city) {
 
         return hotelRepository.findByCityIgnoreCase(city)
-                .stream()
-                .map(hotel -> HotelMapper.toResponse(
-                        hotel,
+                .stream().map(hotel -> HotelMapper.toResponse(hotel,
                         reviewRepository.getAverageRatingByHotelId(hotel.getId()),
                         reviewRepository.getTotalReviewsByHotelId(hotel.getId())
-                ))
-                .toList();
+                )).toList();
     }
 
     @Override
@@ -119,19 +116,14 @@ public class HotelServiceImpl implements HotelService {
         return hotelRepository.findByNameContainingIgnoreCase(name)
                 .stream()
                 .map(hotel -> HotelMapper.toResponse(
-                        hotel,
-                        reviewRepository.getAverageRatingByHotelId(hotel.getId()),
-                        reviewRepository.getTotalReviewsByHotelId(hotel.getId())
-                ))
-                .toList();
+                        hotel,reviewRepository.getAverageRatingByHotelId(hotel.getId()), reviewRepository.getTotalReviewsByHotelId(hotel.getId())
+                )).toList();
     }
 
     @Override
     public String uploadHotelImage(Long hotelId, MultipartFile file) {
 
-        Hotel hotel = hotelRepository.findById(hotelId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Hotel not found"));
+        Hotel hotel = hotelRepository.findById(hotelId).orElseThrow(() -> new ResourceNotFoundException("Hotel not found"));
 
         String imageUrl = fileStorageService.uploadHotelImage(file);
 

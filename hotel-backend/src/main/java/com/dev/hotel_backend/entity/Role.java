@@ -19,4 +19,9 @@ public class Role {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, unique = true)
     private RoleName name;
+
+    // Constructor used by DataInitializer
+    public Role(RoleName name) {
+        this.name = name;
+    }
 }

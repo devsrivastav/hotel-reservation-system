@@ -65,6 +65,7 @@ public class User implements UserDetails {
     public void preUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.getName().name()));

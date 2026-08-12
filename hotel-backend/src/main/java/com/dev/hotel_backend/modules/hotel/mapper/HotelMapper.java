@@ -1,13 +1,15 @@
 package com.dev.hotel_backend.modules.hotel.mapper;
 
-
 import com.dev.hotel_backend.modules.hotel.dto.request.CreateHotelRequest;
+import com.dev.hotel_backend.modules.hotel.dto.request.UpdateHotelRequest;
 import com.dev.hotel_backend.modules.hotel.dto.response.HotelResponse;
 import com.dev.hotel_backend.modules.hotel.entity.Hotel;
 
-public class HotelMapper {
+public final class HotelMapper {
 
-    private HotelMapper() {}
+    private HotelMapper() {
+        // Utility class
+    }
 
     public static Hotel toEntity(CreateHotelRequest request) {
 
@@ -40,6 +42,8 @@ public class HotelMapper {
                 .zipCode(hotel.getZipCode())
                 .phone(hotel.getPhone())
                 .email(hotel.getEmail())
+                .imageUrl(hotel.getImageUrl())
+                .active(hotel.getActive())
                 .starRating(hotel.getStarRating())
                 .checkInTime(hotel.getCheckInTime())
                 .checkOutTime(hotel.getCheckOutTime())
@@ -51,7 +55,8 @@ public class HotelMapper {
     public static HotelResponse toResponse(
             Hotel hotel,
             Double averageRating,
-            Long totalReviews) {
+            Long totalReviews
+    ) {
 
         return HotelResponse.builder()
                 .id(hotel.getId())
@@ -72,5 +77,59 @@ public class HotelMapper {
                 .averageRating(averageRating)
                 .totalReviews(totalReviews)
                 .build();
+    }
+
+    public static void updateEntity(
+            Hotel hotel,
+            UpdateHotelRequest request
+    ) {
+
+        if (request.getName() != null) {
+            hotel.setName(request.getName());
+        }
+
+        if (request.getDescription() != null) {
+            hotel.setDescription(request.getDescription());
+        }
+
+        if (request.getAddress() != null) {
+            hotel.setAddress(request.getAddress());
+        }
+
+        if (request.getCity() != null) {
+            hotel.setCity(request.getCity());
+        }
+
+        if (request.getState() != null) {
+            hotel.setState(request.getState());
+        }
+
+        if (request.getCountry() != null) {
+            hotel.setCountry(request.getCountry());
+        }
+
+        if (request.getZipCode() != null) {
+            hotel.setZipCode(request.getZipCode());
+        }
+
+        if (request.getPhone() != null) {
+            hotel.setPhone(request.getPhone());
+        }
+
+        if (request.getEmail() != null) {
+            hotel.setEmail(request.getEmail());
+        }
+
+        if (request.getStarRating() != null) {
+            hotel.setStarRating(request.getStarRating());
+        }
+
+        if (request.getCheckInTime() != null) {
+            hotel.setCheckInTime(request.getCheckInTime());
+        }
+
+        if (request.getCheckOutTime() != null) {
+            hotel.setCheckOutTime(request.getCheckOutTime());
+        }
     }
 }

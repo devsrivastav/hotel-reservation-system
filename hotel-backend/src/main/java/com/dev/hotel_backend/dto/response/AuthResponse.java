@@ -1,6 +1,5 @@
 package com.dev.hotel_backend.dto.response;
 
-
 import lombok.*;
 
 @Getter
@@ -13,4 +12,8 @@ public class AuthResponse {
     private String token;
 
     private String message;
+
+    private String email;
+
+    private String role;
 }
