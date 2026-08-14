@@ -1,32 +1,31 @@
 package com.dev.hotel_backend.modules.room.service.impl;
 
 import com.dev.hotel_backend.exception.ResourceNotFoundException;
+import com.dev.hotel_backend.modules.booking.enums.BookingStatus;
+import com.dev.hotel_backend.modules.booking.repository.BookingRepository;
 import com.dev.hotel_backend.modules.hotel.entity.Hotel;
 import com.dev.hotel_backend.modules.hotel.repository.HotelRepository;
 import com.dev.hotel_backend.modules.room.dto.request.CreateRoomRequest;
+import com.dev.hotel_backend.modules.room.dto.request.UpdateRoomRequest;
 import com.dev.hotel_backend.modules.room.dto.response.RoomResponse;
 import com.dev.hotel_backend.modules.room.entity.Room;
 import com.dev.hotel_backend.modules.room.enums.RoomStatus;
 import com.dev.hotel_backend.modules.room.mapper.RoomMapper;
 import com.dev.hotel_backend.modules.room.repository.RoomRepository;
 import com.dev.hotel_backend.modules.room.service.RoomService;
+import com.dev.hotel_backend.modules.room.specification.RoomSpecification;
 import com.dev.hotel_backend.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import com.dev.hotel_backend.modules.room.specification.RoomSpecification;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.math.BigDecimal;
-import com.dev.hotel_backend.modules.booking.entity.Booking;
-import com.dev.hotel_backend.modules.booking.enums.BookingStatus;
-import com.dev.hotel_backend.modules.booking.repository.BookingRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.List;
 
 @Service
@@ -37,32 +36,123 @@ public class RoomServiceImpl implements RoomService {
     private final HotelRepository hotelRepository;
     private final FileStorageService fileStorageService;
     private final BookingRepository bookingRepository;
+
+    // =====================================================
+    // CREATE ROOM
+    // =====================================================
+
     @Override
-    public RoomResponse createRoom(CreateRoomRequest request) {
+    public RoomResponse createRoom(
+            CreateRoomRequest request
+    ) {
 
-        Hotel hotel = hotelRepository.findById(request.getHotelId())
-                .orElseThrow(() -> new RuntimeException("Hotel not found"));
+        Hotel hotel = hotelRepository.findById(
+                request.getHotelId()
+        ).orElseThrow(() ->
+                new ResourceNotFoundException(
+                        "Hotel not found"
+                )
+        );
 
-        Room room = Room.builder().roomNumber(request.getRoomNumber())
+        Room room = Room.builder()
+                .roomNumber(request.getRoomNumber())
                 .roomType(request.getRoomType())
-                .pricePerNight(request.getPricePerNight())
+                .pricePerNight(
+                        request.getPricePerNight()
+                )
                 .capacity(request.getCapacity())
                 .floor(request.getFloor())
                 .description(request.getDescription())
+                .status(
+                        request.getStatus() != null
+                                ? request.getStatus()
+                                : RoomStatus.AVAILABLE
+                )
                 .hotel(hotel)
                 .build();
+
         room = roomRepository.save(room);
 
         return RoomMapper.toResponse(room);
     }
 
-    @Override
-    public RoomResponse getRoomById(Long id) {
+    // =====================================================
+    // UPDATE ROOM
+    // =====================================================
 
-        Room room = roomRepository.findById(id).orElseThrow(() -> new RuntimeException("Room not found"));
+    @Override
+    public RoomResponse updateRoom(
+            Long id,
+            UpdateRoomRequest request
+    ) {
+
+        Room room = roomRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Room not found"
+                        )
+                );
+
+        room.setRoomNumber(
+                request.getRoomNumber()
+        );
+
+        room.setRoomType(
+                request.getRoomType()
+        );
+
+        room.setPricePerNight(
+                request.getPricePerNight()
+        );
+
+        room.setCapacity(
+                request.getCapacity()
+        );
+
+        room.setFloor(
+                request.getFloor()
+        );
+
+        room.setDescription(
+                request.getDescription()
+        );
+
+        if (request.getStatus() != null) {
+            room.setStatus(
+                    request.getStatus()
+            );
+        }
+
+        Room updatedRoom =
+                roomRepository.save(room);
+
+        return RoomMapper.toResponse(
+                updatedRoom
+        );
+    }
+
+    // =====================================================
+    // GET ROOM BY ID
+    // =====================================================
+
+    @Override
+    public RoomResponse getRoomById(
+            Long id
+    ) {
+
+        Room room = roomRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Room not found"
+                        )
+                );
 
         return RoomMapper.toResponse(room);
     }
+
+    // =====================================================
+    // GET ALL ROOMS
+    // =====================================================
 
     @Override
     public List<RoomResponse> getAllRooms() {
@@ -73,28 +163,70 @@ public class RoomServiceImpl implements RoomService {
                 .toList();
     }
 
-    @Override
-    public List<RoomResponse> getRoomsByHotel(Long hotelId) {
+    // =====================================================
+    // GET ROOMS BY HOTEL
+    // =====================================================
 
-        return roomRepository.findByHotelId(hotelId)
+    @Override
+    public List<RoomResponse> getRoomsByHotel(
+            Long hotelId
+    ) {
+
+        // Verify hotel exists
+        hotelRepository.findById(hotelId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Hotel not found"
+                        )
+                );
+
+        return roomRepository
+                .findByHotelId(hotelId)
                 .stream()
                 .map(RoomMapper::toResponse)
                 .toList();
     }
 
-    @Override
-    public void deleteRoom(Long id) {
+    // =====================================================
+    // DELETE ROOM
+    // =====================================================
 
-        roomRepository.deleteById(id);
-    }
     @Override
-    public String uploadRoomImage(Long roomId, MultipartFile file) {
+    public void deleteRoom(
+            Long id
+    ) {
+
+        Room room = roomRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Room not found"
+                        )
+                );
+
+        roomRepository.delete(room);
+    }
+
+    // =====================================================
+    // UPLOAD ROOM IMAGE
+    // =====================================================
+
+    @Override
+    public String uploadRoomImage(
+            Long roomId,
+            MultipartFile file
+    ) {
 
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Room not found"));
+                        new ResourceNotFoundException(
+                                "Room not found"
+                        )
+                );
 
-        String imageUrl = fileStorageService.uploadRoomImage(file);
+        String imageUrl =
+                fileStorageService.uploadRoomImage(
+                        file
+                );
 
         room.setImageUrl(imageUrl);
 
@@ -102,6 +234,11 @@ public class RoomServiceImpl implements RoomService {
 
         return imageUrl;
     }
+
+    // =====================================================
+    // SEARCH AVAILABLE ROOMS
+    // =====================================================
+
     @Override
     public Page<RoomResponse> searchAvailableRooms(
             String city,
@@ -110,36 +247,76 @@ public class RoomServiceImpl implements RoomService {
             Integer guests,
             BigDecimal minPrice,
             BigDecimal maxPrice,
-            Pageable pageable)
-    {
-        Specification<Room> specification = Specification
-                .where(RoomSpecification.hasCity(city))
-                .and(RoomSpecification.hasStatus(RoomStatus.AVAILABLE))
-                .and(RoomSpecification.hasCapacity(guests))
-                .and(RoomSpecification.minPrice(minPrice))
-                .and(RoomSpecification.maxPrice(maxPrice));
+            Pageable pageable
+    ) {
 
-        Page<Room> roomPage = roomRepository.findAll(specification, pageable);
+        Specification<Room> specification =
+                Specification
+                        .where(
+                                RoomSpecification.hasCity(
+                                        city
+                                )
+                        )
+                        .and(
+                                RoomSpecification.hasStatus(
+                                        RoomStatus.AVAILABLE
+                                )
+                        )
+                        .and(
+                                RoomSpecification.hasCapacity(
+                                        guests
+                                )
+                        )
+                        .and(
+                                RoomSpecification.minPrice(
+                                        minPrice
+                                )
+                        )
+                        .and(
+                                RoomSpecification.maxPrice(
+                                        maxPrice
+                                )
+                        );
 
-        List<RoomResponse> availableRooms = new ArrayList<>();
+        Page<Room> roomPage =
+                roomRepository.findAll(
+                        specification,
+                        pageable
+                );
 
-        for (Room room : roomPage.getContent()) {
+        List<RoomResponse> availableRooms =
+                new ArrayList<>();
 
-            // Agar dates nahi aayi hain to room return kar do
-            if (checkIn == null || checkOut == null) {
-                availableRooms.add(RoomMapper.toResponse(room));
+        for (Room room :
+                roomPage.getContent()) {
+
+            // Dates not provided
+            if (
+                    checkIn == null ||
+                            checkOut == null
+            ) {
+
+                availableRooms.add(
+                        RoomMapper.toResponse(room)
+                );
+
                 continue;
             }
 
-            boolean booked = bookingRepository
-                    .existsByRoomIdAndStatusNotAndCheckInDateLessThanAndCheckOutDateGreaterThan(
-                            room.getId(),
-                            BookingStatus.CANCELLED,
-                            checkOut,
-                            checkIn);
+            boolean booked =
+                    bookingRepository
+                            .existsByRoomIdAndStatusNotAndCheckInDateLessThanAndCheckOutDateGreaterThan(
+                                    room.getId(),
+                                    BookingStatus.CANCELLED,
+                                    checkOut,
+                                    checkIn
+                            );
 
             if (!booked) {
-                availableRooms.add(RoomMapper.toResponse(room));
+
+                availableRooms.add(
+                        RoomMapper.toResponse(room)
+                );
             }
         }
 

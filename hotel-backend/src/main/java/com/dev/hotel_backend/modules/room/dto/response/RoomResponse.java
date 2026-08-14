@@ -32,4 +32,6 @@ public class RoomResponse {
     private Long hotelId;
 
     private String hotelName;
+
+    private String imageUrl;
 }

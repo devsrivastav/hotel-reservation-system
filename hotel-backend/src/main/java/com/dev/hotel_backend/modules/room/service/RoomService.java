@@ -1,6 +1,7 @@
 package com.dev.hotel_backend.modules.room.service;
 
 import com.dev.hotel_backend.modules.room.dto.request.CreateRoomRequest;
+import com.dev.hotel_backend.modules.room.dto.request.UpdateRoomRequest;
 import com.dev.hotel_backend.modules.room.dto.response.RoomResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,5 +31,9 @@ public interface RoomService {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             Pageable pageable
+    );
+    RoomResponse updateRoom(
+            Long id,
+            UpdateRoomRequest request
     );
 }

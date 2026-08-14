@@ -24,7 +24,12 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     public DashboardResponse getDashboard() {
 
-        BigDecimal revenue = bookingRepository.getTotalRevenue();
+        BigDecimal revenue =
+                bookingRepository.getTotalRevenue();
+
+        if (revenue == null) {
+            revenue = BigDecimal.ZERO;
+        }
 
         return DashboardResponse.builder()
                 .totalUsers(userRepository.count())
@@ -33,10 +38,14 @@ public class DashboardServiceImpl implements DashboardService {
                 .totalBookings(bookingRepository.count())
                 .confirmedBookings(
                         bookingRepository.countByStatus(
-                                BookingStatus.CONFIRMED))
+                                BookingStatus.CONFIRMED
+                        )
+                )
                 .cancelledBookings(
                         bookingRepository.countByStatus(
-                                BookingStatus.CANCELLED))
+                                BookingStatus.CANCELLED
+                        )
+                )
                 .totalRevenue(revenue)
                 .build();
     }

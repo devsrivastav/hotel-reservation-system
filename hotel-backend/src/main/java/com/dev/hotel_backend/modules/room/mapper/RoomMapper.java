@@ -19,6 +19,7 @@ public class RoomMapper {
                 .floor(room.getFloor())
                 .description(room.getDescription())
                 .status(room.getStatus())
+                .imageUrl(room.getImageUrl())
                 .hotelId(room.getHotel().getId())
                 .hotelName(room.getHotel().getName())
                 .build();

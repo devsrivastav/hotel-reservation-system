@@ -1,20 +1,21 @@
 package com.dev.hotel_backend.modules.room.controller;
 
 import com.dev.hotel_backend.modules.room.dto.request.CreateRoomRequest;
+import com.dev.hotel_backend.modules.room.dto.request.UpdateRoomRequest;
 import com.dev.hotel_backend.modules.room.dto.response.RoomResponse;
 import com.dev.hotel_backend.modules.room.service.RoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import java.time.LocalDate;
+
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -24,89 +25,109 @@ public class RoomController {
 
     private final RoomService roomService;
 
+    // Create Room
     @PostMapping
-    public RoomResponse createRoom(
-            @Valid @RequestBody CreateRoomRequest request) {
-
-        return roomService.createRoom(request);
+    public ResponseEntity<RoomResponse> createRoom(
+            @Valid @RequestBody CreateRoomRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(roomService.createRoom(request));
     }
 
-    @GetMapping
-    public List<RoomResponse> getAllRooms() {
 
-        return roomService.getAllRooms();
-    }
-
+    // Get Room By ID
     @GetMapping("/{id}")
-    public RoomResponse getRoomById(@PathVariable Long id) {
-
-        return roomService.getRoomById(id);
+    public ResponseEntity<RoomResponse> getRoomById(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                roomService.getRoomById(id)
+        );
     }
 
+    // Get All Rooms
+    @GetMapping
+    public ResponseEntity<List<RoomResponse>> getAllRooms() {
+        return ResponseEntity.ok(
+                roomService.getAllRooms()
+        );
+    }
+
+    // Get Rooms By Hotel
     @GetMapping("/hotel/{hotelId}")
-    public List<RoomResponse> getRoomsByHotel(
-            @PathVariable Long hotelId) {
-
-        return roomService.getRoomsByHotel(hotelId);
+    public ResponseEntity<List<RoomResponse>> getRoomsByHotel(
+            @PathVariable Long hotelId
+    ) {
+        return ResponseEntity.ok(
+                roomService.getRoomsByHotel(hotelId)
+        );
     }
 
-    @DeleteMapping("/{id}")
-    public String deleteRoom(@PathVariable Long id) {
+    // Upload Room Image
+    @PostMapping("/{roomId}/image")
+    public ResponseEntity<String> uploadRoomImage(
+            @PathVariable Long roomId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(
+                roomService.uploadRoomImage(roomId, file)
+        );
+    }
 
+    @PutMapping("/{id}")
+    public RoomResponse updateRoom(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateRoomRequest request
+    ) {
+        return roomService.updateRoom(id, request);
+    }
+
+    // Delete Room
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteRoom(
+            @PathVariable Long id
+    ) {
         roomService.deleteRoom(id);
 
-        return "Room deleted successfully";
-    }
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping(
-            value="/{id}/image",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
-    public String uploadRoomImage(
-            @PathVariable Long id,
-            @RequestParam("file") MultipartFile file){
-
-        return roomService.uploadRoomImage(id,file);
+        return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/available")
-    public Page<RoomResponse> searchAvailableRooms(
+    // Search Available Rooms
+    @GetMapping("/search")
+    public ResponseEntity<Page<RoomResponse>> searchAvailableRooms(
 
-            @RequestParam(required = false) String city,
+            @RequestParam String city,
 
-            @RequestParam LocalDate checkIn,
+            @RequestParam
+            LocalDate checkIn,
 
-            @RequestParam LocalDate checkOut,
+            @RequestParam
+            LocalDate checkOut,
 
-            @RequestParam(required = false) Integer guests,
+            @RequestParam
+            Integer guests,
 
-            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false)
+            BigDecimal minPrice,
 
-            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false)
+            BigDecimal maxPrice,
 
-            @RequestParam(defaultValue = "0") int page,
-
-            @RequestParam(defaultValue = "10") int size,
-
-            @RequestParam(defaultValue = "pricePerNight") String sortBy,
-
-            @RequestParam(defaultValue = "asc") String direction
+            @PageableDefault(size = 10)
+            Pageable pageable
     ) {
 
-        Sort sort = direction.equalsIgnoreCase("desc")
-                ? Sort.by(sortBy).descending()
-                : Sort.by(sortBy).ascending();
-
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        return roomService.searchAvailableRooms(
-                city,
-                checkIn,
-                checkOut,
-                guests,
-                minPrice,
-                maxPrice,
-                pageable
+        return ResponseEntity.ok(
+                roomService.searchAvailableRooms(
+                        city,
+                        checkIn,
+                        checkOut,
+                        guests,
+                        minPrice,
+                        maxPrice,
+                        pageable
+                )
         );
     }
 }

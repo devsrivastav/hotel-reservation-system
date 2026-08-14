@@ -6,6 +6,8 @@ import com.dev.hotel_backend.modules.room.enums.RoomType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(
         name = "rooms",
@@ -35,7 +37,7 @@ public class Room {
     private RoomType roomType;
 
     @Column(nullable = false)
-    private Double pricePerNight;
+    private BigDecimal pricePerNight;
 
     @Column(nullable = false)
     private Integer capacity;
@@ -45,6 +47,9 @@ public class Room {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(length = 500)
+    private String imageUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
