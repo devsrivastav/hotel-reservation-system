@@ -1,17 +1,23 @@
 package com.dev.hotel_backend.modules.payment.service;
 
-import com.dev.hotel_backend.modules.payment.dto.request.CreatePaymentRequest;
-import com.dev.hotel_backend.modules.payment.dto.request.VerifyPaymentRequest;
 import com.dev.hotel_backend.modules.payment.dto.response.PaymentResponse;
+
+import java.util.List;
 
 public interface PaymentService {
 
-    PaymentResponse createPaymentOrder(
-            CreatePaymentRequest request,
-            String userEmail);
+    PaymentResponse createOrder(
+            Long bookingId
+    );
 
     PaymentResponse verifyPayment(
-            VerifyPaymentRequest request);
+            Long bookingId,
+            String razorpayOrderId,
+            String razorpayPaymentId,
+            String razorpaySignature
+    );
 
-    PaymentResponse getPaymentByBooking(Long bookingId);
+    PaymentResponse refundPayment(Long paymentId);
+
+    List<PaymentResponse> getAllPayments();
 }

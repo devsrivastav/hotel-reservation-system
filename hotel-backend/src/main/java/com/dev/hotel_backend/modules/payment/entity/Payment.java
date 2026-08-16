@@ -21,30 +21,102 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
-    @JoinColumn(name = "booking_id", nullable = false)
+    // =====================================================
+    // BOOKING
+    // =====================================================
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "booking_id",
+            nullable = false,
+            unique = true
+    )
     private Booking booking;
 
-    @Column(nullable = false)
-    private BigDecimal amount;
+    // =====================================================
+    // RAZORPAY ORDER
+    // =====================================================
 
-    @Column(nullable = false)
-    private String currency;
-
-    @Column(nullable = false)
+    @Column(
+            name = "razorpay_order_id",
+            nullable = false,
+            unique = true
+    )
     private String razorpayOrderId;
 
+    // =====================================================
+    // RAZORPAY PAYMENT
+    // =====================================================
+
+    @Column(
+            name = "razorpay_payment_id",
+            unique = true
+    )
     private String razorpayPaymentId;
 
+    // =====================================================
+    // RAZORPAY SIGNATURE
+    // =====================================================
+
+    @Column(
+            name = "razorpay_signature"
+    )
     private String razorpaySignature;
 
+    // =====================================================
+    // AMOUNT
+    // =====================================================
+
+    @Column(
+            nullable = false,
+            precision = 12,
+            scale = 2
+    )
+    private BigDecimal amount;
+
+    // =====================================================
+    // CURRENCY
+    // =====================================================
+
+    @Column(
+            nullable = false,
+            length = 10
+    )
+    private String currency;
+
+    // =====================================================
+    // PAYMENT STATUS
+    // =====================================================
+
     @Enumerated(EnumType.STRING)
+    @Column(
+            nullable = false,
+            length = 30
+    )
     private PaymentStatus status;
 
+    // =====================================================
+    // CREATED AT
+    // =====================================================
+
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    // =====================================================
+    // PAID AT
+    // =====================================================
+
+    private LocalDateTime paidAt;
+
+    // =====================================================
+    // PRE PERSIST
+    // =====================================================
+
     @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
+    protected void onCreate() {
+
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 }

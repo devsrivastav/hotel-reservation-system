@@ -58,6 +58,7 @@ public class SecurityConfig {
                 // AUTHORIZATION
                 // =====================================================
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/uploads/**").permitAll()
 
                         // -------------------------------------------------
                         // Authentication APIs

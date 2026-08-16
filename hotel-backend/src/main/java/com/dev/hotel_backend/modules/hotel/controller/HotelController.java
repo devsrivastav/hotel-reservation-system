@@ -4,10 +4,13 @@ import com.dev.hotel_backend.modules.hotel.dto.request.CreateHotelRequest;
 import com.dev.hotel_backend.modules.hotel.dto.request.UpdateHotelRequest;
 import com.dev.hotel_backend.modules.hotel.dto.response.HotelResponse;
 import com.dev.hotel_backend.modules.hotel.service.HotelService;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,19 +22,11 @@ public class HotelController {
 
     private final HotelService hotelService;
 
-    // Create Hotel
-    @PostMapping
-    public ResponseEntity<HotelResponse> createHotel(
-            @Valid @RequestBody CreateHotelRequest request
-    ) {
-        HotelResponse response = hotelService.createHotel(request);
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
-    }
+    // =====================================================
+    // PUBLIC - GET ALL HOTELS
+    // =====================================================
 
-    // Get All Hotels
     @GetMapping
     public ResponseEntity<List<HotelResponse>> getAllHotels() {
 
@@ -40,7 +35,11 @@ public class HotelController {
         );
     }
 
-    // Get Hotel By ID
+
+    // =====================================================
+    // PUBLIC - GET HOTEL BY ID
+    // =====================================================
+
     @GetMapping("/{id}")
     public ResponseEntity<HotelResponse> getHotelById(
             @PathVariable Long id
@@ -51,7 +50,31 @@ public class HotelController {
         );
     }
 
-    // Update Hotel
+
+    // =====================================================
+    // ADMIN - CREATE HOTEL
+    // =====================================================
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @PostMapping
+    public ResponseEntity<HotelResponse> createHotel(
+            @Valid @RequestBody CreateHotelRequest request
+    ) {
+
+        HotelResponse response =
+                hotelService.createHotel(request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
+    }
+
+
+    // =====================================================
+    // ADMIN - UPDATE HOTEL
+    // =====================================================
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<HotelResponse> updateHotel(
             @PathVariable Long id,
@@ -63,7 +86,12 @@ public class HotelController {
         );
     }
 
-    // Delete Hotel
+
+    // =====================================================
+    // ADMIN - DELETE HOTEL
+    // =====================================================
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteHotel(
             @PathVariable Long id

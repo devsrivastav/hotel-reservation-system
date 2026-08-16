@@ -4,47 +4,132 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 @Service
 public class FileStorageService {
 
-    private static final String HOTEL_UPLOAD_DIR = "uploads/hotels/";
-    private static final String ROOM_UPLOAD_DIR = "uploads/rooms/";
+    private static final String HOTEL_FOLDER = "hotels";
+    private static final String ROOM_FOLDER = "rooms";
 
-    public String uploadHotelImage(MultipartFile file) {
+    private final Path uploadRoot =
+            Paths.get(
+                    System.getProperty("user.dir"),
+                    "uploads"
+            );
 
-        return saveFile(file, HOTEL_UPLOAD_DIR);
+    // =====================================================
+    // HOTEL IMAGE
+    // =====================================================
+
+    public String uploadHotelImage(
+            MultipartFile file
+    ) {
+
+        return saveFile(
+                file,
+                HOTEL_FOLDER
+        );
     }
 
-    public String uploadRoomImage(MultipartFile file) {
+    // =====================================================
+    // ROOM IMAGE
+    // =====================================================
 
-        return saveFile(file, ROOM_UPLOAD_DIR);
+    public String uploadRoomImage(
+            MultipartFile file
+    ) {
+
+        return saveFile(
+                file,
+                ROOM_FOLDER
+        );
     }
 
-    private String saveFile(MultipartFile file, String uploadDir) {
+    // =====================================================
+    // SAVE FILE
+    // =====================================================
+
+    private String saveFile(
+            MultipartFile file,
+            String folder
+    ) {
+
+        if (file == null || file.isEmpty()) {
+
+            throw new RuntimeException(
+                    "Image file is empty."
+            );
+        }
+
+        String contentType =
+                file.getContentType();
+
+        if (contentType == null ||
+                !contentType.startsWith("image/")) {
+
+            throw new RuntimeException(
+                    "Only image files are allowed."
+            );
+        }
 
         try {
 
-            Path uploadPath = Paths.get(uploadDir);
+            // ---------------------------------------------
+            // Create upload directory
+            // ---------------------------------------------
 
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
+            Path uploadPath =
+                    uploadRoot.resolve(folder);
 
-            String originalFilename = file.getOriginalFilename();
+            Files.createDirectories(
+                    uploadPath
+            );
+
+            System.out.println(
+                    "UPLOAD PATH: "
+                            + uploadPath
+                            .toAbsolutePath()
+            );
+
+            // ---------------------------------------------
+            // Original filename
+            // ---------------------------------------------
+
+            String originalFilename =
+                    file.getOriginalFilename();
 
             String extension = "";
 
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(
-                        originalFilename.lastIndexOf("."));
+            if (originalFilename != null &&
+                    originalFilename.contains(".")) {
+
+                extension =
+                        originalFilename.substring(
+                                originalFilename
+                                        .lastIndexOf(".")
+                        ).toLowerCase();
             }
 
-            String fileName = UUID.randomUUID() + extension;
+            // ---------------------------------------------
+            // Unique filename
+            // ---------------------------------------------
 
-            Path filePath = uploadPath.resolve(fileName);
+            String fileName =
+                    UUID.randomUUID()
+                            + extension;
+
+            Path filePath =
+                    uploadPath.resolve(fileName)
+                            .normalize();
+
+            // ---------------------------------------------
+            // Save file
+            // ---------------------------------------------
 
             Files.copy(
                     file.getInputStream(),
@@ -52,11 +137,37 @@ public class FileStorageService {
                     StandardCopyOption.REPLACE_EXISTING
             );
 
-            return uploadDir + fileName;
+            System.out.println(
+                    "IMAGE UPLOAD SUCCESS"
+            );
+
+            System.out.println(
+                    "FILE: "
+                            + filePath
+                            .toAbsolutePath()
+            );
+
+            // ---------------------------------------------
+            // Return browser URL
+            // ---------------------------------------------
+
+            return "http://localhost:8080/uploads/"
+                    + folder
+                    + "/"
+                    + fileName;
 
         } catch (IOException e) {
 
-            throw new RuntimeException("Image upload failed");
+            // VERY IMPORTANT:
+            // Print actual backend error
+
+            e.printStackTrace();
+
+            throw new RuntimeException(
+                    "Image upload failed: "
+                            + e.getMessage(),
+                    e
+            );
         }
     }
 }

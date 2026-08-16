@@ -33,4 +33,10 @@ public class BookingResponse {
     private BigDecimal totalPrice;
 
     private BookingStatus status;
+
+    private String paymentStatus;
+
+    private Long paymentId;
+
+    private String razorpayPaymentId;
 }
