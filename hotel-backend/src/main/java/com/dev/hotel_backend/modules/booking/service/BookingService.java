@@ -34,4 +34,7 @@ public interface BookingService {
     List<BookingResponse> getBookingsByStatus(
             BookingStatus status
     );
+    void cancelBookingByAdmin(Long bookingId);
+    void confirmBookingByAdmin(Long bookingId);
+
 }

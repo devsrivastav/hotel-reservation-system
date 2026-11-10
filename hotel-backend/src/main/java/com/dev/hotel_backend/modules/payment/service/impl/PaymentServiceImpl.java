@@ -1,5 +1,5 @@
 package com.dev.hotel_backend.modules.payment.service.impl;
-
+import com.dev.hotel_backend.modules.email.service.EmailService;
 import com.dev.hotel_backend.exception.BadRequestException;
 import com.dev.hotel_backend.exception.ResourceNotFoundException;
 import com.dev.hotel_backend.modules.booking.entity.Booking;
@@ -28,7 +28,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
-
+    private final EmailService emailService;
     private final RazorpayClient razorpayClient;
     private final PaymentRepository paymentRepository;
     private final BookingRepository bookingRepository;
@@ -166,13 +166,24 @@ public class PaymentServiceImpl implements PaymentService {
                             .build();
 
             Payment savedPayment =
-                    paymentRepository.save(
-                            payment
-                    );
+                    paymentRepository.save(payment);
 
-            return toResponse(
-                    savedPayment
-            );
+// Send payment receipt only after successful payment verification.
+            try {
+                emailService.sendPaymentSuccess(
+                        payment.getBooking().getUser().getEmail(),
+                        payment.getAmount().toPlainString(),
+                        payment.getRazorpayOrderId()
+                );
+
+            } catch (Exception emailException) {
+                System.err.println(
+                        "Payment succeeded, but payment email failed: "
+                                + emailException.getMessage()
+                );
+            }
+
+            return toResponse(savedPayment);
 
         } catch (BadRequestException e) {
 

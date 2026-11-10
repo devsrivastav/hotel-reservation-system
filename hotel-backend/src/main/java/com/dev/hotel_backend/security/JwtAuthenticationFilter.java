@@ -1,3 +1,4 @@
+
 package com.dev.hotel_backend.security;
 
 import jakarta.servlet.FilterChain;
@@ -5,6 +6,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,6 +21,9 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final Logger logger =
+            LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
 
@@ -28,12 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String authHeader =
-                request.getHeader("Authorization");
-
-        // =====================================================
-        // NO TOKEN
-        // =====================================================
+        String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null ||
                 !authHeader.startsWith("Bearer ")) {
@@ -42,78 +43,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String jwt =
-                authHeader.substring(7).trim();
+        String jwt = authHeader.substring(7).trim();
 
         try {
+            if (jwt.isEmpty()) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
-            // =================================================
-            // EXTRACT EMAIL
-            // =================================================
-
-            String email =
-                    jwtService.extractEmail(jwt);
-
-            System.out.println(
-                    "========================================"
-            );
-
-            System.out.println(
-                    "JWT REQUEST : " +
-                            request.getMethod() +
-                            " " +
-                            request.getRequestURI()
-            );
-
-            System.out.println(
-                    "JWT EMAIL   : " + email
-            );
-
-            // =================================================
-            // LOAD USER
-            // =================================================
+            String email = jwtService.extractEmail(jwt);
 
             if (email != null &&
-                    SecurityContextHolder
-                            .getContext()
+                    SecurityContextHolder.getContext()
                             .getAuthentication() == null) {
 
                 UserDetails userDetails =
-                        userDetailsService
-                                .loadUserByUsername(email);
+                        userDetailsService.loadUserByUsername(email);
 
-                System.out.println(
-                        "USER EMAIL  : " +
-                                userDetails.getUsername()
+                boolean valid = jwtService.isTokenValid(
+                        jwt,
+                        userDetails.getUsername()
                 );
-
-                System.out.println(
-                        "AUTHORITIES : " +
-                                userDetails.getAuthorities()
-                );
-
-                // =============================================
-                // VALIDATE TOKEN
-                // =============================================
-
-                boolean valid =
-                        jwtService.isTokenValid(
-                                jwt,
-                                userDetails.getUsername()
-                        );
-
-                System.out.println(
-                        "TOKEN VALID : " + valid
-                );
-
-                // =============================================
-                // SET AUTHENTICATION
-                // =============================================
 
                 if (valid) {
 
-                    UsernamePasswordAuthenticationToken
-                            authentication =
+                    UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
                                     null,
@@ -125,55 +79,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     .buildDetails(request)
                     );
 
-                    SecurityContextHolder
-                            .getContext()
-                            .setAuthentication(
-                                    authentication
-                            );
-
-                    System.out.println(
-                            "AUTHENTICATED: " +
-                                    authentication
-                                            .getAuthorities()
-                    );
+                    SecurityContextHolder.getContext()
+                            .setAuthentication(authentication);
                 }
             }
 
-            System.out.println(
-                    "========================================"
-            );
-
         } catch (Exception exception) {
 
-            System.err.println(
-                    "========================================"
-            );
+            SecurityContextHolder.clearContext();
 
-            System.err.println(
-                    "JWT AUTHENTICATION FAILED"
-            );
-
-            System.err.println(
-                    "REQUEST: " +
-                            request.getMethod() +
-                            " " +
-                            request.getRequestURI()
-            );
-
-            System.err.println(
-                    "ERROR: " +
-                            exception.getClass().getName()
-            );
-
-            System.err.println(
-                    "MESSAGE: " +
-                            exception.getMessage()
-            );
-
-            exception.printStackTrace();
-
-            System.err.println(
-                    "========================================"
+            logger.debug(
+                    "JWT authentication rejected for request {} {}",
+                    request.getMethod(),
+                    request.getRequestURI()
             );
         }
 

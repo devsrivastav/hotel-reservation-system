@@ -1,3 +1,4 @@
+
 package com.dev.hotel_backend.modules.room.service.impl;
 
 import com.dev.hotel_backend.exception.ResourceNotFoundException;
@@ -15,12 +16,15 @@ import com.dev.hotel_backend.modules.room.repository.RoomRepository;
 import com.dev.hotel_backend.modules.room.service.RoomService;
 import com.dev.hotel_backend.modules.room.specification.RoomSpecification;
 import com.dev.hotel_backend.service.FileStorageService;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
@@ -30,6 +34,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class RoomServiceImpl implements RoomService {
 
     private final RoomRepository roomRepository;
@@ -37,37 +42,25 @@ public class RoomServiceImpl implements RoomService {
     private final FileStorageService fileStorageService;
     private final BookingRepository bookingRepository;
 
-    // =====================================================
     // CREATE ROOM
-    // =====================================================
-
     @Override
-    public RoomResponse createRoom(
-            CreateRoomRequest request
-    ) {
+    @Transactional
+    public RoomResponse createRoom(CreateRoomRequest request) {
 
-        Hotel hotel = hotelRepository.findById(
-                request.getHotelId()
-        ).orElseThrow(() ->
-                new ResourceNotFoundException(
-                        "Hotel not found"
-                )
-        );
+        Hotel hotel = hotelRepository.findById(request.getHotelId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Hotel not found"));
 
         Room room = Room.builder()
                 .roomNumber(request.getRoomNumber())
                 .roomType(request.getRoomType())
-                .pricePerNight(
-                        request.getPricePerNight()
-                )
+                .pricePerNight(request.getPricePerNight())
                 .capacity(request.getCapacity())
                 .floor(request.getFloor())
                 .description(request.getDescription())
-                .status(
-                        request.getStatus() != null
-                                ? request.getStatus()
-                                : RoomStatus.AVAILABLE
-                )
+                .status(request.getStatus() != null
+                        ? request.getStatus()
+                        : RoomStatus.AVAILABLE)
                 .hotel(hotel)
                 .build();
 
@@ -76,84 +69,43 @@ public class RoomServiceImpl implements RoomService {
         return RoomMapper.toResponse(room);
     }
 
-    // =====================================================
     // UPDATE ROOM
-    // =====================================================
-
     @Override
-    public RoomResponse updateRoom(
-            Long id,
-            UpdateRoomRequest request
-    ) {
+    @Transactional
+    public RoomResponse updateRoom(Long id, UpdateRoomRequest request) {
 
         Room room = roomRepository.findById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Room not found"
-                        )
-                );
+                        new ResourceNotFoundException("Room not found"));
 
-        room.setRoomNumber(
-                request.getRoomNumber()
-        );
-
-        room.setRoomType(
-                request.getRoomType()
-        );
-
-        room.setPricePerNight(
-                request.getPricePerNight()
-        );
-
-        room.setCapacity(
-                request.getCapacity()
-        );
-
-        room.setFloor(
-                request.getFloor()
-        );
-
-        room.setDescription(
-                request.getDescription()
-        );
+        room.setRoomNumber(request.getRoomNumber());
+        room.setRoomType(request.getRoomType());
+        room.setPricePerNight(request.getPricePerNight());
+        room.setCapacity(request.getCapacity());
+        room.setFloor(request.getFloor());
+        room.setDescription(request.getDescription());
 
         if (request.getStatus() != null) {
-            room.setStatus(
-                    request.getStatus()
-            );
+            room.setStatus(request.getStatus());
         }
 
-        Room updatedRoom =
-                roomRepository.save(room);
+        Room updatedRoom = roomRepository.save(room);
 
-        return RoomMapper.toResponse(
-                updatedRoom
-        );
+        return RoomMapper.toResponse(updatedRoom);
     }
 
-    // =====================================================
     // GET ROOM BY ID
-    // =====================================================
-
     @Override
-    public RoomResponse getRoomById(
-            Long id
-    ) {
+    public RoomResponse getRoomById(Long id) {
 
         Room room = roomRepository.findById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Room not found"
-                        )
-                );
+                        new ResourceNotFoundException("Room not found"));
 
         return RoomMapper.toResponse(room);
     }
 
-    // =====================================================
     // GET ALL ROOMS
-    // =====================================================
-
     @Override
     public List<RoomResponse> getAllRooms() {
 
@@ -163,70 +115,47 @@ public class RoomServiceImpl implements RoomService {
                 .toList();
     }
 
-    // =====================================================
     // GET ROOMS BY HOTEL
-    // =====================================================
-
     @Override
-    public List<RoomResponse> getRoomsByHotel(
-            Long hotelId
-    ) {
+    public List<RoomResponse> getRoomsByHotel(Long hotelId) {
 
-        // Verify hotel exists
         hotelRepository.findById(hotelId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Hotel not found"
-                        )
-                );
+                        new ResourceNotFoundException("Hotel not found"));
 
-        return roomRepository
-                .findByHotelId(hotelId)
+        return roomRepository.findByHotelId(hotelId)
                 .stream()
                 .map(RoomMapper::toResponse)
                 .toList();
     }
 
-    // =====================================================
     // DELETE ROOM
-    // =====================================================
-
     @Override
-    public void deleteRoom(
-            Long id
-    ) {
+    @Transactional
+    public void deleteRoom(Long id) {
 
         Room room = roomRepository.findById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Room not found"
-                        )
-                );
+                        new ResourceNotFoundException("Room not found"));
 
         roomRepository.delete(room);
     }
 
-    // =====================================================
     // UPLOAD ROOM IMAGE
-    // =====================================================
-
     @Override
-    public String uploadRoomImage(
-            Long roomId,
-            MultipartFile file
-    ) {
+    @Transactional
+    public String uploadRoomImage(Long roomId, MultipartFile file) {
 
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Room not found"
-                        )
-                );
+                        new ResourceNotFoundException("Room not found"));
 
-        String imageUrl =
-                fileStorageService.uploadRoomImage(
-                        file
-                );
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Please select an image file");
+        }
+
+        String imageUrl = fileStorageService.uploadRoomImage(file);
 
         room.setImageUrl(imageUrl);
 
@@ -235,10 +164,7 @@ public class RoomServiceImpl implements RoomService {
         return imageUrl;
     }
 
-    // =====================================================
     // SEARCH AVAILABLE ROOMS
-    // =====================================================
-
     @Override
     public Page<RoomResponse> searchAvailableRooms(
             String city,
@@ -247,76 +173,39 @@ public class RoomServiceImpl implements RoomService {
             Integer guests,
             BigDecimal minPrice,
             BigDecimal maxPrice,
-            Pageable pageable
-    ) {
+            Pageable pageable) {
 
         Specification<Room> specification =
-                Specification
-                        .where(
-                                RoomSpecification.hasCity(
-                                        city
-                                )
-                        )
-                        .and(
-                                RoomSpecification.hasStatus(
-                                        RoomStatus.AVAILABLE
-                                )
-                        )
-                        .and(
-                                RoomSpecification.hasCapacity(
-                                        guests
-                                )
-                        )
-                        .and(
-                                RoomSpecification.minPrice(
-                                        minPrice
-                                )
-                        )
-                        .and(
-                                RoomSpecification.maxPrice(
-                                        maxPrice
-                                )
-                        );
+                Specification.where(RoomSpecification.hasCity(city))
+                        .and(RoomSpecification.hasStatus(RoomStatus.AVAILABLE))
+                        .and(RoomSpecification.hasCapacity(guests))
+                        .and(RoomSpecification.minPrice(minPrice))
+                        .and(RoomSpecification.maxPrice(maxPrice));
 
         Page<Room> roomPage =
-                roomRepository.findAll(
-                        specification,
-                        pageable
-                );
+                roomRepository.findAll(specification, pageable);
 
-        List<RoomResponse> availableRooms =
-                new ArrayList<>();
+        List<RoomResponse> availableRooms = new ArrayList<>();
 
-        for (Room room :
-                roomPage.getContent()) {
+        for (Room room : roomPage.getContent()) {
 
-            // Dates not provided
-            if (
-                    checkIn == null ||
-                            checkOut == null
-            ) {
+            // If dates are not provided, return available-status rooms.
+            if (checkIn == null || checkOut == null) {
 
-                availableRooms.add(
-                        RoomMapper.toResponse(room)
-                );
-
+                availableRooms.add(RoomMapper.toResponse(room));
                 continue;
             }
 
-            boolean booked =
-                    bookingRepository
-                            .existsByRoomIdAndStatusNotAndCheckInDateLessThanAndCheckOutDateGreaterThan(
-                                    room.getId(),
-                                    BookingStatus.CANCELLED,
-                                    checkOut,
-                                    checkIn
-                            );
+            boolean booked = bookingRepository
+                    .existsByRoomIdAndStatusNotAndCheckInDateLessThanAndCheckOutDateGreaterThan(
+                            room.getId(),
+                            BookingStatus.CANCELLED,
+                            checkOut,
+                            checkIn
+                    );
 
             if (!booked) {
-
-                availableRooms.add(
-                        RoomMapper.toResponse(room)
-                );
+                availableRooms.add(RoomMapper.toResponse(room));
             }
         }
 

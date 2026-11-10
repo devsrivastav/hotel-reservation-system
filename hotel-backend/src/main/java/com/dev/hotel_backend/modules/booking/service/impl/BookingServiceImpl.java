@@ -11,8 +11,8 @@ import com.dev.hotel_backend.modules.booking.mapper.BookingMapper;
 import com.dev.hotel_backend.modules.booking.repository.BookingRepository;
 import com.dev.hotel_backend.modules.booking.service.BookingService;
 import com.dev.hotel_backend.modules.email.service.EmailService;
-import com.dev.hotel_backend.modules.payment.repository.PaymentRepository;
 import com.dev.hotel_backend.modules.payment.enums.PaymentStatus;
+import com.dev.hotel_backend.modules.payment.repository.PaymentRepository;
 import com.dev.hotel_backend.modules.room.entity.Room;
 import com.dev.hotel_backend.modules.room.repository.RoomRepository;
 import com.dev.hotel_backend.repository.UserRepository;
@@ -46,109 +46,55 @@ public class BookingServiceImpl implements BookingService {
             String userEmail
     ) {
 
-        // -------------------------------------------------
-        // FIND USER
-        // -------------------------------------------------
-
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found"
-                        )
+                        new ResourceNotFoundException("User not found")
                 );
 
-
-        // -------------------------------------------------
-        // FIND ROOM
-        // -------------------------------------------------
-
-        Room room = roomRepository.findById(
-                        request.getRoomId()
-                )
+        Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Room not found"
-                        )
+                        new ResourceNotFoundException("Room not found")
                 );
 
-
-        // -------------------------------------------------
-        // DATE VALIDATION
-        // -------------------------------------------------
-
-        if (request.getCheckInDate() == null ||
-                request.getCheckOutDate() == null) {
-
+        if (request.getCheckInDate() == null
+                || request.getCheckOutDate() == null) {
             throw new BadRequestException(
                     "Check-in and check-out dates are required."
             );
         }
 
-
         if (!request.getCheckOutDate()
                 .isAfter(request.getCheckInDate())) {
-
             throw new BadRequestException(
                     "Check-out date must be after check-in date."
             );
         }
 
-
-        if (request.getCheckInDate()
-                .isBefore(LocalDate.now())) {
-
+        if (request.getCheckInDate().isBefore(LocalDate.now())) {
             throw new BadRequestException(
                     "Check-in date cannot be in the past."
             );
         }
 
-
-        // -------------------------------------------------
-        // GUEST VALIDATION
-        // -------------------------------------------------
-
-        if (request.getNumberOfGuests() == null ||
-                request.getNumberOfGuests() < 1) {
-
+        if (request.getNumberOfGuests() == null
+                || request.getNumberOfGuests() < 1) {
             throw new BadRequestException(
                     "At least one guest is required."
             );
         }
 
-
-        if (request.getNumberOfGuests()
-                > room.getCapacity()) {
-
+        if (request.getNumberOfGuests() > room.getCapacity()) {
             throw new BadRequestException(
                     "Number of guests exceeds room capacity."
             );
         }
 
-
-        // -------------------------------------------------
-        // ROOM STATUS VALIDATION
-        // -------------------------------------------------
-
-        if (room.getStatus() == null) {
-
-            throw new BadRequestException(
-                    "Room status is not available."
-            );
-        }
-
-        if (!room.getStatus()
-                .name()
-                .equals("AVAILABLE")) {
-
+        if (room.getStatus() == null
+                || !room.getStatus().name().equals("AVAILABLE")) {
             throw new BadRequestException(
                     "Room is currently not available."
             );
         }
-
-
-        // -------------------------------------------------
-        // CHECK ROOM AVAILABILITY
-        // -------------------------------------------------
 
         boolean alreadyBooked =
                 bookingRepository
@@ -159,154 +105,54 @@ public class BookingServiceImpl implements BookingService {
                                 request.getCheckInDate()
                         );
 
-
         if (alreadyBooked) {
-
             throw new BadRequestException(
                     "Room is already booked for the selected dates."
             );
         }
 
-
-        // -------------------------------------------------
-        // CALCULATE NIGHTS
-        // -------------------------------------------------
-
-        long nights =
-                ChronoUnit.DAYS.between(
-                        request.getCheckInDate(),
-                        request.getCheckOutDate()
-                );
-
+        long nights = ChronoUnit.DAYS.between(
+                request.getCheckInDate(),
+                request.getCheckOutDate()
+        );
 
         if (nights <= 0) {
-
             throw new BadRequestException(
                     "Invalid booking duration."
             );
         }
 
-
-        // -------------------------------------------------
-        // CALCULATE TOTAL PRICE
-        // -------------------------------------------------
-
         if (room.getPricePerNight() == null) {
-
             throw new BadRequestException(
                     "Room price is not configured."
             );
         }
 
+        BigDecimal totalAmount = room.getPricePerNight()
+                .multiply(BigDecimal.valueOf(nights));
 
-        BigDecimal totalAmount =
-                room.getPricePerNight()
-                        .multiply(
-                                BigDecimal.valueOf(nights)
-                        );
-
-
-        // -------------------------------------------------
-        // CREATE BOOKING
-        // -------------------------------------------------
-
+        // Booking remains PENDING until admin approval.
         Booking booking = Booking.builder()
                 .user(user)
                 .room(room)
-                .checkInDate(
-                        request.getCheckInDate()
-                )
-                .checkOutDate(
-                        request.getCheckOutDate()
-                )
-                .numberOfGuests(
-                        request.getNumberOfGuests()
-                )
+                .checkInDate(request.getCheckInDate())
+                .checkOutDate(request.getCheckOutDate())
+                .numberOfGuests(request.getNumberOfGuests())
                 .totalPrice(totalAmount)
-                .status(
-                        BookingStatus.CONFIRMED
-                )
+                .status(BookingStatus.PENDING)
                 .build();
 
+        Booking savedBooking = bookingRepository.save(booking);
 
-        // -------------------------------------------------
-        // SAVE BOOKING
-        // -------------------------------------------------
-
-        Booking savedBooking =
-                bookingRepository.save(booking);
-
-
-        // Make sure database operation is completed
-        // before processing email.
-        bookingRepository.flush();
-
-
-        // -------------------------------------------------
-        // SEND CONFIRMATION EMAIL
-        // IMPORTANT:
-        // Email failure must NOT make booking fail.
-        // -------------------------------------------------
-
-        try {
-
-            emailService.sendBookingConfirmation(
-                    user.getEmail(),
-                    savedBooking
-                            .getRoom()
-                            .getHotel()
-                            .getName(),
-                    savedBooking
-                            .getRoom()
-                            .getRoomNumber(),
-                    savedBooking
-                            .getCheckInDate()
-                            .toString(),
-                    savedBooking
-                            .getCheckOutDate()
-                            .toString()
-            );
-
-        } catch (Exception emailException) {
-
-            System.err.println(
-                    "================================================="
-            );
-
-            System.err.println(
-                    "BOOKING CREATED SUCCESSFULLY"
-            );
-
-            System.err.println(
-                    "Confirmation email could not be sent."
-            );
-
-            System.err.println(
-                    "Email error: "
-                            + emailException.getMessage()
-            );
-
-            System.err.println(
-                    "================================================="
-            );
-        }
-
-
-        // -------------------------------------------------
-        // RETURN RESPONSE
-        // -------------------------------------------------
-
-        return BookingMapper.toResponse(
-                savedBooking
-        );
+        return toResponseWithPayment(savedBooking);
     }
-
 
     // =====================================================
     // CUSTOMER - MY BOOKINGS
     // =====================================================
 
     @Override
+    @Transactional(readOnly = true)
     public List<BookingResponse> getMyBookings(String userEmail) {
 
         User user = userRepository.findByEmail(userEmail)
@@ -316,33 +162,9 @@ public class BookingServiceImpl implements BookingService {
 
         return bookingRepository.findByUserId(user.getId())
                 .stream()
-                .map(booking -> {
-
-                    BookingResponse response =
-                            BookingMapper.toResponse(booking);
-
-                    paymentRepository
-                            .findByBookingId(booking.getId())
-                            .ifPresent(payment -> {
-
-                                response.setPaymentStatus(
-                                        payment.getStatus().name()
-                                );
-
-                                response.setPaymentId(
-                                        payment.getId()
-                                );
-
-                                response.setRazorpayPaymentId(
-                                        payment.getRazorpayPaymentId()
-                                );
-                            });
-
-                    return response;
-                })
+                .map(this::toResponseWithPayment)
                 .toList();
     }
-
 
     // =====================================================
     // CUSTOMER - GET BOOKING
@@ -355,32 +177,19 @@ public class BookingServiceImpl implements BookingService {
             String userEmail
     ) {
 
-        Booking booking =
-                bookingRepository.findById(
-                                bookingId
-                        )
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Booking not found"
-                                )
-                        );
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Booking not found")
+                );
 
-
-        if (!booking.getUser()
-                .getEmail()
-                .equals(userEmail)) {
-
+        if (!booking.getUser().getEmail().equals(userEmail)) {
             throw new BadRequestException(
                     "You are not allowed to access this booking."
             );
         }
 
-
-        return BookingMapper.toResponse(
-                booking
-        );
+        return toResponseWithPayment(booking);
     }
-
 
     // =====================================================
     // CUSTOMER - CANCEL BOOKING
@@ -393,121 +202,150 @@ public class BookingServiceImpl implements BookingService {
             String userEmail
     ) {
 
-        Booking booking =
-                bookingRepository.findById(
-                                bookingId
-                        )
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Booking not found"
-                                )
-                        );
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Booking not found")
+                );
 
-
-        // -------------------------------------------------
-        // OWNERSHIP CHECK
-        // -------------------------------------------------
-
-        if (!booking.getUser()
-                .getEmail()
-                .equals(userEmail)) {
-
+        if (!booking.getUser().getEmail().equals(userEmail)) {
             throw new BadRequestException(
                     "You are not allowed to cancel this booking."
             );
         }
 
+        ensureCanCancel(booking);
 
-        // -------------------------------------------------
-        // CHECK PAYMENT STATUS
-        // -------------------------------------------------
+        booking.setStatus(BookingStatus.CANCELLED);
 
-        paymentRepository
+        Booking savedBooking = bookingRepository.save(booking);
+
+        sendCancellationEmailSafely(savedBooking);
+    }
+
+    // =====================================================
+    // ADMIN - CONFIRM BOOKING
+    // =====================================================
+
+    @Override
+    @Transactional
+    public void confirmBookingByAdmin(Long bookingId) {
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Booking not found")
+                );
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new BadRequestException(
+                    "Only pending bookings can be confirmed."
+            );
+        }
+
+        boolean paymentIsPaid = paymentRepository
                 .findByBookingId(bookingId)
-                .ifPresent(payment -> {
+                .map(payment -> payment.getStatus() == PaymentStatus.PAID)
+                .orElse(false);
 
-                    if (payment.getStatus() == PaymentStatus.PAID) {
+        if (!paymentIsPaid) {
+            throw new BadRequestException(
+                    "Cannot confirm booking. Payment is not completed."
+            );
+        }
 
-                        System.out.println(
-                                "Paid booking cancellation requested. " +
-                                        "Refund must be processed separately."
-                        );
-                    }
-                });
+        booking.setStatus(BookingStatus.CONFIRMED);
 
+        Booking savedBooking = bookingRepository.save(booking);
+        // Send confirmation email after admin approval.
+        sendBookingConfirmationEmailSafely(savedBooking);
+    }
 
-        // -------------------------------------------------
-        // ALREADY CANCELLED
-        // -------------------------------------------------
+    // =====================================================
+    // ADMIN - CANCEL BOOKING
+    // =====================================================
 
-        if (booking.getStatus()
-                == BookingStatus.CANCELLED) {
+    @Override
+    @Transactional
+    public void cancelBookingByAdmin(Long bookingId) {
 
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Booking not found")
+                );
+
+        ensureCanCancel(booking);
+
+        booking.setStatus(BookingStatus.CANCELLED);
+
+        Booking savedBooking = bookingRepository.save(booking);
+
+        sendCancellationEmailSafely(savedBooking);
+    }
+
+    // =====================================================
+    // SHARED - VALIDATE CANCELLATION
+    // =====================================================
+
+    private void ensureCanCancel(Booking booking) {
+
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw new BadRequestException(
                     "Booking is already cancelled."
             );
         }
 
+        boolean paymentIsPaid = paymentRepository
+                .findByBookingId(booking.getId())
+                .map(payment -> payment.getStatus() == PaymentStatus.PAID)
+                .orElse(false);
 
-        // -------------------------------------------------
-        // CANCEL BOOKING
-        // -------------------------------------------------
+        if (paymentIsPaid) {
+            throw new BadRequestException(
+                    "This booking has a paid payment. Process the refund first, then cancel the booking."
+            );
+        }
+    }
 
-        booking.setStatus(
-                BookingStatus.CANCELLED
-        );
+    // =====================================================
+    // SHARED - SEND CANCELLATION EMAIL
+    // =====================================================
 
-
-        Booking savedBooking =
-                bookingRepository.save(
-                        booking
-                );
-
-
-        // -------------------------------------------------
-        // SEND CANCELLATION EMAIL
-        // IMPORTANT:
-        // Email failure must NOT make cancellation fail.
-        // -------------------------------------------------
+    private void sendCancellationEmailSafely(Booking booking) {
 
         try {
-
             emailService.sendBookingCancellation(
-                    savedBooking
-                            .getUser()
-                            .getEmail(),
-
-                    savedBooking
-                            .getRoom()
-                            .getHotel()
-                            .getName()
+                    booking.getUser().getEmail(),
+                    booking.getRoom().getHotel().getName()
             );
 
         } catch (Exception emailException) {
 
             System.err.println(
-                    "================================================="
-            );
-
-            System.err.println(
-                    "BOOKING CANCELLED SUCCESSFULLY"
-            );
-
-            System.err.println(
-                    "Cancellation email could not be sent."
-            );
-
-            System.err.println(
-                    "Email error: "
+                    "Booking " + booking.getId()
+                            + " was cancelled, but the cancellation email failed: "
                             + emailException.getMessage()
-            );
-
-            System.err.println(
-                    "================================================="
             );
         }
     }
 
+    //Send Confirmation Email;
+    private void sendBookingConfirmationEmailSafely(Booking booking) {
+        try {
+            emailService.sendBookingConfirmation(
+                    booking.getUser().getEmail(),
+                    booking.getRoom().getHotel().getName(),
+                    booking.getRoom().getRoomNumber(),
+                    booking.getCheckInDate().toString(),
+                    booking.getCheckOutDate().toString()
+            );
+
+        } catch (Exception emailException) {
+            System.err.println(
+                    "Booking " + booking.getId()
+                            + " was confirmed, but confirmation email failed: "
+                            + emailException.getMessage()
+            );
+        }
+    }
 
     // =====================================================
     // ADMIN - GET ALL BOOKINGS
@@ -519,10 +357,9 @@ public class BookingServiceImpl implements BookingService {
 
         return bookingRepository.findAll()
                 .stream()
-                .map(BookingMapper::toResponse)
+                .map(this::toResponseWithPayment)
                 .toList();
     }
-
 
     // =====================================================
     // ADMIN - GET BOOKINGS BY STATUS
@@ -534,10 +371,31 @@ public class BookingServiceImpl implements BookingService {
             BookingStatus status
     ) {
 
-        return bookingRepository
-                .findByStatus(status)
+        return bookingRepository.findByStatus(status)
                 .stream()
-                .map(BookingMapper::toResponse)
+                .map(this::toResponseWithPayment)
                 .toList();
+    }
+
+    // =====================================================
+    // SHARED - MAP BOOKING AND PAYMENT DETAILS
+    // =====================================================
+
+    private BookingResponse toResponseWithPayment(Booking booking) {
+
+        BookingResponse response = BookingMapper.toResponse(booking);
+
+        paymentRepository.findByBookingId(booking.getId())
+                .ifPresent(payment -> {
+
+                    response.setPaymentStatus(payment.getStatus().name());
+                    response.setPaymentId(payment.getId());
+
+                    response.setRazorpayPaymentId(
+                            payment.getRazorpayPaymentId()
+                    );
+                });
+
+        return response;
     }
 }

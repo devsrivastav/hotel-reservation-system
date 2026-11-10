@@ -22,7 +22,7 @@ public class PaymentController {
     // ADMIN - GET ALL PAYMENTS
     // =====================================================
 
-    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @GetMapping
     public List<PaymentResponse> getAllPayments() {
 
@@ -67,7 +67,7 @@ public class PaymentController {
     // ADMIN - REFUND PAYMENT
     // =====================================================
 
-    @PreAuthorize("hasRole('ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @PostMapping("/{paymentId}/refund")
     public PaymentResponse refundPayment(
             @PathVariable Long paymentId
