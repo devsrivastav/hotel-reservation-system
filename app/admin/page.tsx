@@ -1,708 +1,415 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import {
-  Hotel,
+  AlertCircle,
+  ArrowDownRight,
+  ArrowRight,
   BedDouble,
   CalendarCheck,
-  CreditCard,
+  CheckCircle2,
+  Hotel,
+  IndianRupee,
   RefreshCw,
-  AlertCircle,
+  Users,
+  XCircle,
 } from "lucide-react";
 import api from "@/lib/api";
 
 type DashboardData = {
-  totalHotels?: number;
-  totalRooms?: number;
-  totalBookings?: number;
-  totalPayments?: number;
-  totalRevenue?: number;
-  [key: string]: any;
+  totalUsers: number;
+  totalHotels: number;
+  totalRooms: number;
+  totalBookings: number;
+  confirmedBookings: number;
+  cancelledBookings: number;
+  totalRevenue: number;
 };
 
-type Payment = {
-  id?: number;
-  amount?: number;
-  status?: string;
-  paymentStatus?: string;
-  bookingId?: number;
-  createdAt?: string;
-  paidAt?: string;
-  [key: string]: any;
+const EMPTY_DASHBOARD: DashboardData = {
+  totalUsers: 0,
+  totalHotels: 0,
+  totalRooms: 0,
+  totalBookings: 0,
+  confirmedBookings: 0,
+  cancelledBookings: 0,
+  totalRevenue: 0,
 };
 
-export default function AdminDashboard() {
-  const [dashboard, setDashboard] =
-    useState<DashboardData | null>(null);
-
-  const [payments, setPayments] =
-    useState<Payment[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
-
-  const [dashboardError, setDashboardError] =
-    useState("");
-
-  const [paymentsError, setPaymentsError] =
-    useState("");
-
-  // =====================================================
-  // FETCH DASHBOARD
-  // =====================================================
-
-  const fetchDashboard = async () => {
-  setLoading(true);
-
-  setError("");
-  setDashboardError("");
-  setPaymentsError("");
-
-  try {
-    // =====================================================
-    // CHECK TOKEN
-    // =====================================================
-
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("token")
-        : null;
-
-    console.log(
-      "========================================"
-    );
-
-    console.log(
-      "ADMIN DASHBOARD REQUEST"
-    );
-
-    console.log(
-      "API BASE URL:",
-      api.defaults.baseURL
-    );
-
-    console.log(
-      "TOKEN EXISTS:",
-      !!token
-    );
-
-    console.log(
-      "TOKEN LENGTH:",
-      token?.length || 0
-    );
-
-    console.log(
-      "========================================"
-    );
-
-    if (!token) {
-      setError(
-        "Authentication token not found. Please login again."
-      );
-      return;
-    }
-
-    // =====================================================
-    // DASHBOARD
-    // =====================================================
-
-    try {
-      const dashboardResponse =
-        await api.get(
-          "/admin/dashboard"
-        );
-
-      console.log(
-        "ADMIN DASHBOARD SUCCESS:",
-        dashboardResponse.data
-      );
-
-      setDashboard(
-        dashboardResponse.data
-      );
-
-    } catch (dashboardErr: any) {
-
-      console.error(
-        "ADMIN DASHBOARD ERROR:",
-        dashboardErr
-      );
-
-      console.error(
-        "STATUS:",
-        dashboardErr?.response?.status
-      );
-
-      console.error(
-        "URL:",
-        dashboardErr?.config?.url
-      );
-
-      console.error(
-        "AUTH HEADER PRESENT:",
-        !!dashboardErr?.config?.headers?.Authorization
-      );
-
-      console.error(
-        "RESPONSE:",
-        dashboardErr?.response?.data
-      );
-
-      const status =
-        dashboardErr?.response?.status;
-
-      const message =
-        dashboardErr?.response?.data?.message ||
-        dashboardErr?.response?.data?.error ||
-        dashboardErr?.message ||
-        "Unable to load admin dashboard.";
-
-      setDashboardError(
-        `Dashboard API failed${
-          status ? ` (${status})` : ""
-        }: ${message}`
-      );
-    }
-
-    // =====================================================
-    // PAYMENTS
-    // =====================================================
-
-    try {
-      const paymentsResponse =
-        await api.get("/payments");
-
-      console.log(
-        "PAYMENTS SUCCESS:",
-        paymentsResponse.data
-      );
-
-      const paymentData =
-        paymentsResponse.data;
-
-      if (Array.isArray(paymentData)) {
-        setPayments(paymentData);
-      } else if (
-        Array.isArray(paymentData?.content)
-      ) {
-        setPayments(
-          paymentData.content
-        );
-      } else if (
-        Array.isArray(paymentData?.data)
-      ) {
-        setPayments(
-          paymentData.data
-        );
-      } else {
-        setPayments([]);
-      }
-
-    } catch (paymentsErr: any) {
-
-      console.error(
-        "PAYMENTS ERROR:",
-        paymentsErr
-      );
-
-      console.error(
-        "STATUS:",
-        paymentsErr?.response?.status
-      );
-
-      console.error(
-        "URL:",
-        paymentsErr?.config?.url
-      );
-
-      console.error(
-        "AUTH HEADER PRESENT:",
-        !!paymentsErr?.config?.headers?.Authorization
-      );
-
-      console.error(
-        "RESPONSE:",
-        paymentsErr?.response?.data
-      );
-
-      const status =
-        paymentsErr?.response?.status;
-
-      const message =
-        paymentsErr?.response?.data?.message ||
-        paymentsErr?.response?.data?.error ||
-        paymentsErr?.message ||
-        "Unable to load payments.";
-
-      setPaymentsError(
-        `Payments API failed${
-          status ? ` (${status})` : ""
-        }: ${message}`
-      );
-    }
-
-  } catch (err: any) {
-
-    console.error(
-      "Dashboard loading error:",
-      err
-    );
-
-    setError(
-      err?.response?.data?.message ||
-      err?.message ||
-      "Unable to load dashboard."
-    );
-
-  } finally {
-    setLoading(false);
-  }
-};
-  // =====================================================
-  // LOAD DATA
-  // =====================================================
-
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  // =====================================================
-  // CALCULATE PAYMENT STATS
-  // =====================================================
-
-  const paidPayments =
-    payments.filter(
-      (payment) =>
-        String(
-          payment.status ||
-            payment.paymentStatus ||
-            ""
-        ).toUpperCase() === "PAID"
-    );
-
-  const paymentRevenue =
-    paidPayments.reduce(
-      (total, payment) =>
-        total +
-        Number(payment.amount || 0),
-      0
-    );
-
-  // =====================================================
-  // STATS
-  // =====================================================
-
-  const stats = [
-    {
-      title: "Total Hotels",
-      value:
-        dashboard?.totalHotels ?? "—",
-      icon: Hotel,
-    },
-    {
-      title: "Total Rooms",
-      value:
-        dashboard?.totalRooms ?? "—",
-      icon: BedDouble,
-    },
-    {
-      title: "Total Bookings",
-      value:
-        dashboard?.totalBookings ?? "—",
-      icon: CalendarCheck,
-    },
-    {
-      title: "Total Payments",
-      value:
-        dashboard?.totalPayments ??
-        payments.length,
-      icon: CreditCard,
-    },
-  ];
-
-  // =====================================================
-  // LOADING
-  // =====================================================
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-gray-50 p-6 lg:p-10">
-
-        <div className="mx-auto max-w-7xl">
-
-          <div className="animate-pulse">
-
-            <div className="h-8 w-64 rounded bg-gray-200" />
-
-            <div className="mt-3 h-4 w-96 rounded bg-gray-200" />
-
-            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-
-              {[1, 2, 3, 4].map(
-                (item) => (
-                  <div
-                    key={item}
-                    className="h-32 rounded-2xl bg-gray-200"
-                  />
-                )
-              )}
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </main>
-    );
+function toNumber(value: unknown): number {
+  const numberValue = Number(value ?? 0);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function getErrorMessage(error: any): string {
+  const status = error?.response?.status;
+
+  if (status === 401) {
+    return "Your session has expired. Please log in again.";
   }
 
-  // =====================================================
-  // PAGE
-  // =====================================================
+  if (status === 403) {
+    return "Access denied. Sign in with an ADMIN or SUPER_ADMIN account.";
+  }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6 lg:p-10">
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    "Unable to load dashboard data. Check that the backend is running."
+  );
+}
 
-      <div className="mx-auto max-w-7xl">
+function StatCard({
+  title,
+  value,
+  helper,
+  icon: Icon,
+}: {
+  title: string;
+  value: string | number;
+  helper: string;
+  icon: typeof Users;
+}) {
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-500">{title}</p>
+          <p className="mt-3 break-words text-3xl font-bold tracking-tight text-slate-950">
+            {value}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">{helper}</p>
+        </div>
+        <div className="rounded-xl bg-slate-100 p-3 text-slate-700">
+          <Icon size={22} aria-hidden="true" />
+        </div>
+      </div>
+    </article>
+  );
+}
 
-        {/* =================================================
-            HEADER
-        ================================================= */}
+function QuickAction({
+  href,
+  title,
+  description,
+  icon: Icon,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  icon: typeof Hotel;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-400 sm:p-6"
+    >
+      <div className="flex items-center justify-between">
+        <span className="rounded-xl bg-slate-100 p-3 text-slate-800">
+          <Icon size={23} aria-hidden="true" />
+        </span>
+        <ArrowRight
+          size={19}
+          className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-900"
+          aria-hidden="true"
+        />
+      </div>
+      <h3 className="mt-5 font-semibold text-slate-950">{title}</h3>
+      <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
+    </Link>
+  );
+}
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+export default function AdminDashboardPage() {
+  const [dashboard, setDashboard] = useState<DashboardData>(EMPTY_DASHBOARD);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [lastUpdated, setLastUpdated] = useState("");
 
+  const fetchDashboard = useCallback(async (manual = false) => {
+    if (manual) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError("");
+
+    try {
+      // api.ts should already add the /api base path and attach the JWT token.
+      const response = await api.get("/admin/dashboard");
+      const data = response?.data ?? {};
+
+      setDashboard({
+        totalUsers: toNumber(data.totalUsers),
+        totalHotels: toNumber(data.totalHotels),
+        totalRooms: toNumber(data.totalRooms),
+        totalBookings: toNumber(data.totalBookings),
+        confirmedBookings: toNumber(data.confirmedBookings),
+        cancelledBookings: toNumber(data.cancelledBookings),
+        totalRevenue: toNumber(data.totalRevenue),
+      });
+      setLastUpdated(new Date().toLocaleTimeString("en-IN"));
+    } catch (requestError: any) {
+      console.error("Admin dashboard request failed:", requestError);
+      setError(getErrorMessage(requestError));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchDashboard();
+  }, [fetchDashboard]);
+
+  const formatter = new Intl.NumberFormat("en-IN");
+  const moneyFormatter = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  });
+
+  const bookingCompletion =
+    dashboard.totalBookings > 0
+      ? Math.round(
+          (dashboard.confirmedBookings / dashboard.totalBookings) * 100
+        )
+      : 0;
+
+  return (
+    <main className="min-h-screen bg-slate-50">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-7 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <div>
-
-            <h1 className="text-3xl font-bold text-gray-900">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+              StayEase · Administration
+            </p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
               Admin Dashboard
             </h1>
-
-            <p className="mt-1 text-gray-500">
-              Manage your StayEase hotel
-              reservation system.
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              Monitor hotel inventory, customer bookings, and platform revenue.
             </p>
-
           </div>
 
-          <button
-            type="button"
-            onClick={fetchDashboard}
-            className="flex w-fit items-center gap-2 rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800"
-          >
-            <RefreshCw size={17} />
-
-            Refresh
-          </button>
-
+          <div className="flex flex-wrap items-center gap-3">
+            {lastUpdated && (
+              <span className="text-xs text-slate-500">
+                Updated {lastUpdated}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => void fetchDashboard(true)}
+              disabled={loading || refreshing}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw
+                size={16}
+                className={refreshing ? "animate-spin" : ""}
+                aria-hidden="true"
+              />
+              {refreshing ? "Refreshing..." : "Refresh data"}
+            </button>
+          </div>
         </div>
+      </header>
 
-        {/* =================================================
-            GENERAL ERROR
-        ================================================= */}
-
+      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
         {error && (
-          <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-
-            <AlertCircle
-              size={20}
-              className="mt-0.5 shrink-0"
-            />
-
-            <p className="text-sm">
-              {error}
-            </p>
-
+          <div
+            role="alert"
+            className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950"
+          >
+            <AlertCircle className="mt-0.5 shrink-0" size={20} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">Dashboard data could not be loaded</p>
+              <p className="mt-1 text-sm leading-6">{error}</p>
+              <button
+                type="button"
+                onClick={() => void fetchDashboard(true)}
+                className="mt-3 text-sm font-semibold underline underline-offset-4"
+              >
+                Try again
+              </button>
+            </div>
           </div>
         )}
 
-        {/* =================================================
-            DASHBOARD API ERROR
-        ================================================= */}
-
-        {dashboardError && (
-          <div className="mt-6 rounded-xl border border-orange-200 bg-orange-50 p-4">
-
-            <div className="flex items-start gap-3">
-
-              <AlertCircle
-                size={20}
-                className="mt-0.5 shrink-0 text-orange-600"
-              />
-
-              <div>
-
-                <p className="font-semibold text-orange-800">
-                  Dashboard API Error
-                </p>
-
-                <p className="mt-1 text-sm text-orange-700">
-                  {dashboardError}
-                </p>
-
+        {loading ? (
+          <section aria-label="Loading dashboard" className="animate-pulse">
+            <div className="h-5 w-40 rounded bg-slate-200" />
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {Array.from({ length: 7 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-36 rounded-2xl border border-slate-200 bg-white"
+                />
+              ))}
+            </div>
+            <div className="mt-9 h-5 w-48 rounded bg-slate-200" />
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="h-36 rounded-2xl bg-slate-200" />
+              ))}
+            </div>
+          </section>
+        ) : (
+          <>
+            <section aria-labelledby="overview-heading">
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2
+                    id="overview-heading"
+                    className="text-lg font-bold text-slate-950"
+                  >
+                    Platform overview
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Live totals returned by the StayEase backend.
+                  </p>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                  Admin summary
+                </span>
               </div>
 
-            </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                  title="Total users"
+                  value={formatter.format(dashboard.totalUsers)}
+                  helper="Registered accounts"
+                  icon={Users}
+                />
+                <StatCard
+                  title="Hotels"
+                  value={formatter.format(dashboard.totalHotels)}
+                  helper="Hotels in the system"
+                  icon={Hotel}
+                />
+                <StatCard
+                  title="Rooms"
+                  value={formatter.format(dashboard.totalRooms)}
+                  helper="Rooms in the inventory"
+                  icon={BedDouble}
+                />
+                <StatCard
+                  title="Total bookings"
+                  value={formatter.format(dashboard.totalBookings)}
+                  helper="All recorded bookings"
+                  icon={CalendarCheck}
+                />
+              </div>
 
-          </div>
-        )}
-
-        {/* =================================================
-            STATS
-        ================================================= */}
-
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-
-          {stats.map((stat) => {
-            const Icon = stat.icon;
-
-            return (
-              <div
-                key={stat.title}
-                className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-              >
-
-                <div className="flex items-center justify-between">
-
-                  <div>
-
-                    <p className="text-sm font-medium text-gray-500">
-                      {stat.title}
-                    </p>
-
-                    <p className="mt-2 text-3xl font-bold text-gray-900">
-                      {stat.value}
-                    </p>
-
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 sm:p-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-emerald-800">
+                        Confirmed bookings
+                      </p>
+                      <p className="mt-2 text-3xl font-bold text-emerald-950">
+                        {formatter.format(dashboard.confirmedBookings)}
+                      </p>
+                    </div>
+                    <CheckCircle2 size={27} className="text-emerald-700" aria-hidden="true" />
                   </div>
-
-                  <div className="rounded-xl bg-gray-100 p-3">
-
-                    <Icon
-                      size={22}
-                      className="text-gray-700"
-                    />
-
-                  </div>
-
+                  <p className="mt-3 text-xs text-emerald-800">
+                    {bookingCompletion}% of all bookings
+                  </p>
                 </div>
 
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 sm:p-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-rose-800">
+                        Cancelled bookings
+                      </p>
+                      <p className="mt-2 text-3xl font-bold text-rose-950">
+                        {formatter.format(dashboard.cancelledBookings)}
+                      </p>
+                    </div>
+                    <XCircle size={27} className="text-rose-700" aria-hidden="true" />
+                  </div>
+                  <p className="mt-3 text-xs text-rose-800">
+                    Bookings marked cancelled
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-slate-500">
+                        Total revenue
+                      </p>
+                      <p className="mt-2 break-words text-2xl font-bold text-slate-950 sm:text-3xl">
+                        {moneyFormatter.format(dashboard.totalRevenue)}
+                      </p>
+                    </div>
+                    <span className="rounded-xl bg-slate-100 p-3 text-slate-800">
+                      <IndianRupee size={23} aria-hidden="true" />
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xs text-slate-500">
+                    Value returned by the existing dashboard API
+                  </p>
+                </div>
               </div>
-            );
-          })}
+            </section>
 
-        </div>
-
-        {/* =================================================
-            REVENUE
-        ================================================= */}
-
-        <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
-          <p className="text-sm font-medium text-gray-500">
-            Paid Revenue
-          </p>
-
-          <p className="mt-2 text-3xl font-bold text-gray-900">
-            ₹
-            {Number(
-              dashboard?.totalRevenue ??
-                paymentRevenue
-            ).toLocaleString("en-IN")}
-          </p>
-
-        </div>
-
-        {/* =================================================
-            PAYMENTS ERROR
-        ================================================= */}
-
-        {paymentsError && (
-          <div className="mt-6 rounded-xl border border-orange-200 bg-orange-50 p-4">
-
-            <div className="flex items-start gap-3">
-
-              <AlertCircle
-                size={20}
-                className="mt-0.5 shrink-0 text-orange-600"
-              />
-
+            <section aria-labelledby="actions-heading" className="mt-10">
               <div>
-
-                <p className="font-semibold text-orange-800">
-                  Payments API Error
+                <h2 id="actions-heading" className="text-lg font-bold text-slate-950">
+                  Quick actions
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Open a management area to continue working.
                 </p>
-
-                <p className="mt-1 text-sm text-orange-700">
-                  {paymentsError}
-                </p>
-
               </div>
 
-            </div>
+              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <QuickAction
+                  href="/admin/hotels"
+                  title="Manage hotels"
+                  description="Create hotel records, edit details, and manage hotel listings."
+                  icon={Hotel}
+                />
+                <QuickAction
+                  href="/admin/rooms"
+                  title="Manage rooms"
+                  description="Review room inventory and maintain room details."
+                  icon={BedDouble}
+                />
+                <QuickAction
+                  href="/admin/bookings"
+                  title="Manage bookings"
+                  description="Search bookings and review booking and payment statuses."
+                  icon={CalendarCheck}
+                />
+              </div>
+            </section>
 
-          </div>
+            <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-slate-100 p-3 text-slate-800">
+                  <ArrowDownRight size={21} aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-slate-950">
+                    Keep your dashboard up to date
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Use “Refresh data” after making changes in the hotel, room, or booking management pages.
+                    Refund processing is intentionally not included in this dashboard update.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </>
         )}
-
-        {/* =================================================
-            RECENT PAYMENTS
-        ================================================= */}
-
-        <div className="mt-8 rounded-2xl border border-gray-200 bg-white shadow-sm">
-
-          <div className="border-b border-gray-200 p-6">
-
-            <h2 className="text-xl font-bold text-gray-900">
-              Recent Payments
-            </h2>
-
-            <p className="mt-1 text-sm text-gray-500">
-              Latest payment transactions.
-            </p>
-
-          </div>
-
-          {payments.length === 0 ? (
-            <div className="p-10 text-center">
-
-              <CreditCard
-                size={35}
-                className="mx-auto text-gray-300"
-              />
-
-              <p className="mt-3 font-medium text-gray-600">
-                No payments found
-              </p>
-
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-
-              <table className="w-full text-left">
-
-                <thead className="border-b border-gray-200 bg-gray-50">
-
-                  <tr>
-
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Payment ID
-                    </th>
-
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Booking ID
-                    </th>
-
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Amount
-                    </th>
-
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Status
-                    </th>
-
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Date
-                    </th>
-
-                  </tr>
-
-                </thead>
-
-                <tbody className="divide-y divide-gray-100">
-
-                  {payments
-                    .slice(0, 10)
-                    .map(
-                      (
-                        payment,
-                        index
-                      ) => {
-
-                        const status =
-                          String(
-                            payment.status ||
-                              payment.paymentStatus ||
-                              "UNKNOWN"
-                          ).toUpperCase();
-
-                        return (
-                          <tr
-                            key={
-                              payment.id ??
-                              index
-                            }
-                            className="hover:bg-gray-50"
-                          >
-
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                              {payment.id ??
-                                "—"}
-                            </td>
-
-                            <td className="px-6 py-4 text-sm text-gray-600">
-                              {payment.bookingId ??
-                                "—"}
-                            </td>
-
-                            <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                              ₹
-                              {Number(
-                                payment.amount ||
-                                  0
-                              ).toLocaleString(
-                                "en-IN"
-                              )}
-                            </td>
-
-                            <td className="px-6 py-4">
-
-                              <span
-                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                                  status ===
-                                  "PAID"
-                                    ? "bg-green-100 text-green-700"
-                                    : status ===
-                                      "FAILED"
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-gray-100 text-gray-700"
-                                }`}
-                              >
-                                {status}
-                              </span>
-
-                            </td>
-
-                            <td className="px-6 py-4 text-sm text-gray-500">
-                              {payment.paidAt ||
-                                payment.createdAt
-                                ? new Date(
-                                    payment.paidAt ||
-                                      payment.createdAt!
-                                  ).toLocaleDateString(
-                                    "en-IN"
-                                  )
-                                : "—"}
-                            </td>
-
-                          </tr>
-                        );
-                      }
-                    )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-          )}
-
-        </div>
-
       </div>
-
     </main>
   );
 }

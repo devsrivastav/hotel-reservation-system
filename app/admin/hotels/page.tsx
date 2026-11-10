@@ -68,6 +68,27 @@ const initialForm: HotelForm = {
   checkOutTime: "11:00",
 };
 
+// Convert backend-relative upload paths into browser-accessible URLs.
+// Set NEXT_PUBLIC_BACKEND_URL when the backend is hosted somewhere other than localhost.
+const BACKEND_ORIGIN = (
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"
+).replace(/\/$/, "");
+
+function getHotelImageUrl(imageUrl?: string | null): string {
+  if (!imageUrl) return "";
+
+  const value = imageUrl.trim();
+  if (!value) return "";
+
+  // Keep absolute URLs and local preview URLs unchanged.
+  if (/^(https?:\/\/|blob:|data:)/i.test(value)) {
+    return value;
+  }
+
+  // Backend stores paths such as /uploads/hotels/example.jpg.
+  return `${BACKEND_ORIGIN}${value.startsWith("/") ? value : `/${value}`}`;
+}
+
 export default function AdminHotelsPage() {
   // =====================================================
   // STATE
@@ -176,9 +197,9 @@ export default function AdminHotelsPage() {
     }
 
     // Validate image type
-    if (!file.type.startsWith("image/")) {
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
       setError(
-        "Please select a valid image file."
+        "Please select a JPEG or PNG image."
       );
 
       e.target.value = "";
@@ -253,7 +274,7 @@ export default function AdminHotelsPage() {
     setImageFile(null);
 
     setImagePreview(
-      hotel.imageUrl || null
+      getHotelImageUrl(hotel.imageUrl) || null
     );
 
     setError("");
@@ -293,6 +314,9 @@ export default function AdminHotelsPage() {
     setError("");
     setSuccess("");
     setSaving(true);
+
+    let imageUploadFailed = false;
+    let imageUploadMessage = "";
 
     try {
       const payload = {
@@ -379,15 +403,11 @@ export default function AdminHotelsPage() {
             imageFile
           );
 
+          // Let the browser/Axios set the multipart boundary automatically.
+          // Do not manually set Content-Type for FormData in the browser.
           await api.post(
             `/hotels/${hotelId}/image`,
-            formData,
-            {
-              headers: {
-                "Content-Type":
-                  "multipart/form-data",
-              },
-            }
+            formData
           );
 
           setSuccess(
@@ -401,10 +421,14 @@ export default function AdminHotelsPage() {
             imageError
           );
 
-          setError(
-            imageError?.response?.data ||
-            "Hotel saved, but image upload failed."
-          );
+          imageUploadFailed = true;
+
+          const responseData = imageError?.response?.data;
+          imageUploadMessage =
+            (typeof responseData === "string" && responseData) ||
+            responseData?.message ||
+            imageError?.message ||
+            "Hotel saved, but image upload failed.";
         } finally {
           setUploadingImage(false);
         }
@@ -425,6 +449,13 @@ export default function AdminHotelsPage() {
       setImagePreview(null);
 
       await fetchHotels();
+
+      // fetchHotels clears the page error while loading, so show the
+      // upload failure after the hotel list has refreshed.
+      if (imageUploadFailed) {
+        setError(`Hotel details were saved, but the image could not be uploaded. ${imageUploadMessage}`);
+        setSuccess("");
+      }
     } catch (err: any) {
       console.error(
         "Save hotel error:",
@@ -666,27 +697,27 @@ export default function AdminHotelsPage() {
 
                 {/* IMAGE */}
 
-                <div className="flex h-52 items-center justify-center overflow-hidden bg-gray-100">
+                <div className="relative flex h-52 items-center justify-center overflow-hidden bg-gray-100">
 
-                  {hotel.imageUrl ? (
+                  <HotelIcon
+                    size={55}
+                    className="text-gray-400"
+                  />
 
+                  {hotel.imageUrl && (
                     <img
-                      src={hotel.imageUrl}
-                      alt={hotel.name}
-                      className="h-full w-full object-cover"
+                      src={getHotelImageUrl(hotel.imageUrl)}
+                      alt={`${hotel.name} hotel`}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      loading="lazy"
                       onError={(e) => {
-                        e.currentTarget.style.display =
-                          "none";
+                        console.error(
+                          "Hotel image failed to load:",
+                          getHotelImageUrl(hotel.imageUrl)
+                        );
+                        e.currentTarget.style.display = "none";
                       }}
                     />
-
-                  ) : (
-
-                    <HotelIcon
-                      size={55}
-                      className="text-gray-400"
-                    />
-
                   )}
 
                 </div>
@@ -1043,7 +1074,7 @@ export default function AdminHotelsPage() {
                         </p>
 
                         <p className="text-xs text-gray-500">
-                          JPG, JPEG, PNG or WEBP • Max 5 MB
+                          JPG, JPEG or PNG • Max 5 MB
                         </p>
                       </div>
 
@@ -1051,7 +1082,7 @@ export default function AdminHotelsPage() {
 
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/webp,image/jpg"
+                      accept="image/jpeg,image/png,image/jpg"
                       onChange={handleImageChange}
                       className="mt-4 w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 file:mr-4 file:rounded-lg file:border-0 file:bg-gray-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-gray-800"
                     />
@@ -1065,6 +1096,10 @@ export default function AdminHotelsPage() {
                           src={imagePreview}
                           alt="Hotel preview"
                           className="h-64 w-full object-cover"
+                          onError={(e) => {
+                            console.error("Hotel image preview failed to load:", imagePreview);
+                            e.currentTarget.style.display = "none";
+                          }}
                         />
 
                         <button

@@ -1,924 +1,909 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { useParams, useRouter } from "next/navigation";
+
+import Link from "next/link";
+
 import {
+
   ArrowLeft,
+
   MapPin,
+
   Phone,
+
   Mail,
+
   Star,
-  CalendarDays,
-  Users,
-  BedDouble,
-  Loader2,
+
+  Clock,
+
   Hotel as HotelIcon,
+
+  Loader2,
+
+  CalendarDays,
+
 } from "lucide-react";
 
 import api from "@/lib/api";
 
-interface Hotel {
+interface HotelData {
+
   id: number;
+
   name: string;
+
   description?: string;
+
   address?: string;
+
   city?: string;
+
   state?: string;
+
   country?: string;
+
   zipCode?: string;
+
   phone?: string;
+
   email?: string;
+
   starRating?: number;
+
   checkInTime?: string;
+
   checkOutTime?: string;
-  imageUrl?: string;
+
+  imageUrl?: string | null;
+
   active?: boolean;
+
   averageRating?: number;
+
   totalReviews?: number;
+
 }
 
-interface Room {
+interface RoomData {
+
   id: number;
+
   roomNumber: string;
-  roomType?: string;
-  pricePerNight?: number;
-  capacity?: number;
-  floor?: number;
+
+  roomType: string;
+
+  pricePerNight: number;
+
+  capacity: number;
+
+  floor: number;
+
   description?: string;
-  status?: string;
-  hotelId?: number;
-  hotelName?: string;
-  imageUrl?: string;
+
+  imageUrl?: string | null;
+
+  status: string;
+
+  hotelId: number;
+
+  hotelName: string;
+
 }
 
 export default function HotelDetailsPage() {
+
   const params = useParams();
+
   const router = useRouter();
 
-  const hotelId = params?.id;
+  const hotelId = params.id;
 
-  const [hotel, setHotel] =
-    useState<Hotel | null>(null);
+  const [hotel, setHotel] = useState<HotelData | null>(null);
 
-  const [rooms, setRooms] =
-    useState<Room[]>([]);
+  const [rooms, setRooms] = useState<RoomData[]>([]);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [roomsLoading, setRoomsLoading] =
-    useState(true);
+  const [roomsLoading, setRoomsLoading] = useState(true);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
 
-  // =====================================================
-  // IMAGE URL
-  // =====================================================
+  const getImageUrl = (imageUrl?: string | null) => {
 
-  const getImageUrl = (
-    imageUrl?: string | null
-  ) => {
     if (!imageUrl) {
+
       return "";
+
     }
 
     if (
+
       imageUrl.startsWith("http://") ||
+
       imageUrl.startsWith("https://")
+
     ) {
+
       return imageUrl;
+
     }
+
+    const backendUrl = "http://localhost:8080";
 
     if (imageUrl.startsWith("/")) {
-      return `http://localhost:8080${imageUrl}`;
+
+      return `${backendUrl}${imageUrl}`;
+
     }
 
-    return `http://localhost:8080/${imageUrl}`;
+    return `${backendUrl}/${imageUrl}`;
+
   };
 
-  // =====================================================
-  // LOAD HOTEL + ROOMS
-  // =====================================================
+  const fetchHotel = async () => {
 
-  useEffect(() => {
-    if (!hotelId) {
-      return;
-    }
+    try {
 
-    const fetchHotel = async () => {
-      try {
-        setLoading(true);
-        setError("");
+      setLoading(true);
 
-        console.log(
-          "FETCH HOTEL:",
-          `/hotels/${hotelId}`
-        );
+      setError("");
 
-        const response =
-          await api.get(
-            `/hotels/${hotelId}`
-          );
+      const response = await api.get(`/hotels/${hotelId}`);
 
-        console.log(
-          "HOTEL RESPONSE:",
-          response.data
-        );
+      setHotel(response.data);
 
-        setHotel(response.data);
+    } catch (err: any) {
 
-      } catch (err: any) {
-        console.error(
-          "HOTEL DETAILS ERROR:",
-          err
-        );
+      console.error("Hotel details error:", err);
 
-        console.error(
-          "STATUS:",
-          err?.response?.status
-        );
+      if (err?.response?.status === 404) {
 
-        console.error(
-          "RESPONSE:",
-          err?.response?.data
-        );
+        setError("Hotel not found.");
+
+      } else if (err?.response?.status === 401) {
+
+        setError("Please login to view this hotel.");
+
+      } else {
 
         setError(
+
           err?.response?.data?.message ||
+
             "Unable to load hotel details."
+
         );
 
-      } finally {
-        setLoading(false);
       }
-    };
 
-    const fetchRooms = async () => {
-      try {
-        setRoomsLoading(true);
+    } finally {
 
-        console.log(
-          "FETCH ROOMS:",
-          `/rooms/hotel/${hotelId}`
-        );
+      setLoading(false);
 
-        const response =
-          await api.get(
-            `/rooms/hotel/${hotelId}`
-          );
+    }
 
-        console.log(
-          "ROOMS RESPONSE:",
-          response.data
-        );
+  };
 
-        const roomData =
-          Array.isArray(response.data)
-            ? response.data
-            : response.data?.content ||
-              response.data?.data ||
-              [];
+  const fetchRooms = async () => {
 
-        setRooms(
-          Array.isArray(roomData)
-            ? roomData
-            : []
-        );
+    try {
 
-      } catch (err: any) {
-        console.error(
-          "ROOMS ERROR:",
-          err
-        );
+      setRoomsLoading(true);
 
-        console.error(
-          "ROOM STATUS:",
-          err?.response?.status
-        );
+      const response = await api.get(
 
-        console.error(
-          "ROOM RESPONSE:",
-          err?.response?.data
-        );
+        `/rooms/hotel/${hotelId}`
+
+      );
+
+      const data = response.data;
+
+      if (Array.isArray(data)) {
+
+        setRooms(data);
+
+      } else if (Array.isArray(data?.content)) {
+
+        setRooms(data.content);
+
+      } else {
 
         setRooms([]);
 
-      } finally {
-        setRoomsLoading(false);
       }
-    };
+
+    } catch (err) {
+
+      console.error("Rooms error:", err);
+
+      setRooms([]);
+
+    } finally {
+
+      setRoomsLoading(false);
+
+    }
+
+  };
+
+  useEffect(() => {
+
+    if (!hotelId) {
+
+      return;
+
+    }
 
     fetchHotel();
+
     fetchRooms();
 
   }, [hotelId]);
 
-  // =====================================================
-  // LOADING
-  // =====================================================
-
   if (loading) {
+
     return (
+
       <main className="flex min-h-screen items-center justify-center bg-gray-50">
 
-        <div className="text-center">
+        <div className="flex items-center gap-3 text-gray-600">
 
           <Loader2
-            size={42}
-            className="mx-auto animate-spin text-gray-900"
+
+            size={32}
+
+            className="animate-spin text-gray-900"
+
           />
 
-          <p className="mt-4 text-gray-600">
-            Loading hotel details...
-          </p>
+          <span>Loading hotel...</span>
 
         </div>
 
       </main>
+
     );
+
   }
 
-  // =====================================================
-  // ERROR
-  // =====================================================
+  if (error || !hotel) {
 
-  if (!hotel) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
 
-        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+      <main className="min-h-screen bg-gray-50 px-6 py-12">
 
-          <HotelIcon
-            size={48}
-            className="mx-auto text-gray-400"
-          />
+        <div className="mx-auto max-w-4xl">
 
-          <h1 className="mt-5 text-2xl font-bold text-gray-900">
-            Hotel not found
-          </h1>
+          <Link
 
-          <p className="mt-3 text-gray-600">
-            {error ||
-              "Unable to load this hotel."}
-          </p>
+            href="/hotels"
 
-          <button
-            type="button"
-            onClick={() =>
-              router.push("/hotels")
-            }
-            className="mt-6 rounded-xl bg-black px-6 py-3 font-semibold text-white hover:bg-gray-800"
+            className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-gray-950"
+
           >
+
+            <ArrowLeft size={18} />
+
             Back to Hotels
-          </button>
+
+          </Link>
+
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-8">
+
+            <h1 className="text-xl font-bold text-red-700">
+
+              {error || "Hotel not found"}
+
+            </h1>
+
+            <p className="mt-2 text-red-600">
+
+              We could not load this hotel.
+
+            </p>
+
+          </div>
 
         </div>
 
       </main>
+
     );
+
   }
-
-  // =====================================================
-  // HOTEL DATA
-  // =====================================================
-
-  const hotelImage =
-    getImageUrl(
-      hotel.imageUrl
-    );
 
   const location = [
+
     hotel.address,
+
     hotel.city,
+
     hotel.state,
+
     hotel.country,
+
     hotel.zipCode,
+
   ]
+
     .filter(Boolean)
+
     .join(", ");
 
-  const rating =
-    hotel.averageRating ??
-    hotel.starRating ??
-    0;
-
-  // =====================================================
-  // PAGE
-  // =====================================================
-
   return (
+
     <main className="min-h-screen bg-gray-50">
 
-      {/* =================================================
-          HERO
-      ================================================= */}
+      {/* HERO */}
 
-      <section className="bg-gray-950 px-6 py-10 text-white">
+      <section className="bg-gray-950 px-6 py-8 text-white">
 
         <div className="mx-auto max-w-7xl">
 
-          {/* BACK */}
+          <Link
 
-          <button
-            type="button"
-            onClick={() =>
-              router.push("/hotels")
-            }
-            className="mb-7 flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white"
+            href="/hotels"
+
+            className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400 transition hover:text-white"
+
           >
-            <ArrowLeft
-              size={18}
-            />
+
+            <ArrowLeft size={18} />
 
             Back to Hotels
-          </button>
 
-          <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+          </Link>
 
-            {/* =================================================
-                HOTEL IMAGE
-            ================================================= */}
+        </div>
 
-            <div className="h-[320px] overflow-hidden rounded-3xl bg-gray-800 sm:h-[400px]">
+      </section>
 
-              {hotelImage ? (
-                <img
-                  src={hotelImage}
-                  alt={hotel.name}
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display =
-                      "none";
-                  }}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center">
+      {/* HOTEL DETAILS */}
 
-                  <HotelIcon
-                    size={70}
-                    className="text-gray-500"
-                  />
+      <section className="mx-auto max-w-7xl px-6 py-10">
 
-                </div>
-              )}
+        <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
 
-            </div>
+          {/* IMAGE */}
 
-            {/* =================================================
-                HOTEL DETAILS
-            ================================================= */}
+          <div className="relative h-72 overflow-hidden bg-gray-200 md:h-[420px]">
 
-            <div>
+            {hotel.imageUrl ? (
 
-              <div className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-gray-400">
+              <img
+
+                src={getImageUrl(hotel.imageUrl)}
+
+                alt={hotel.name}
+
+                className="h-full w-full object-cover"
+
+              />
+
+            ) : (
+
+              <div className="flex h-full items-center justify-center">
 
                 <HotelIcon
-                  size={17}
-                />
 
-                StayEase
+                  size={90}
+
+                  className="text-gray-400"
+
+                />
 
               </div>
 
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-                {hotel.name}
-              </h1>
+            )}
+
+            {hotel.active && (
+
+              <span className="absolute right-5 top-5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-green-700 shadow">
+
+                Available
+
+              </span>
+
+            )}
+
+          </div>
+
+          {/* INFORMATION */}
+
+          <div className="p-6 md:p-10">
+
+            <div className="flex flex-col justify-between gap-6 md:flex-row">
+
+              <div>
+
+                <h1 className="text-3xl font-bold text-gray-950 md:text-4xl">
+
+                  {hotel.name}
+
+                </h1>
+
+                {location && (
+
+                  <div className="mt-4 flex items-start gap-2 text-gray-600">
+
+                    <MapPin
+
+                      size={19}
+
+                      className="mt-0.5 shrink-0"
+
+                    />
+
+                    <span>{location}</span>
+
+                  </div>
+
+                )}
+
+              </div>
 
               {/* RATING */}
 
-              <div className="mt-5 flex flex-wrap items-center gap-4">
+              <div className="rounded-2xl bg-gray-50 px-5 py-4">
 
-                <div className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2">
+                <div className="flex items-center gap-2">
 
                   <Star
-                    size={19}
+
+                    size={20}
+
                     className="fill-yellow-400 text-yellow-400"
+
                   />
 
-                  <span className="font-semibold">
-                    {Number(
-                      rating
-                    ).toFixed(1)}
+                  <span className="text-xl font-bold text-gray-950">
+
+                    {hotel.averageRating ??
+
+                      hotel.starRating ??
+
+                      "N/A"}
+
                   </span>
 
-                  {hotel.totalReviews !==
-                    undefined && (
-                    <span className="text-gray-400">
-                      (
-                      {
-                        hotel.totalReviews
-                      }{" "}
-                      reviews)
-                    </span>
+                </div>
+
+                <p className="mt-1 text-sm text-gray-500">
+
+                  {hotel.totalReviews ?? 0} reviews
+
+                </p>
+
+              </div>
+
+            </div>
+
+            {/* DESCRIPTION */}
+
+            {hotel.description && (
+
+              <div className="mt-8">
+
+                <h2 className="text-xl font-bold text-gray-950">
+
+                  About this hotel
+
+                </h2>
+
+                <p className="mt-3 max-w-4xl leading-7 text-gray-600">
+
+                  {hotel.description}
+
+                </p>
+
+              </div>
+
+            )}
+
+            {/* HOTEL INFO */}
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+              <div className="rounded-2xl bg-gray-50 p-5">
+
+                <Clock
+
+                  size={22}
+
+                  className="text-gray-700"
+
+                />
+
+                <p className="mt-3 text-sm text-gray-500">
+
+                  Check-in
+
+                </p>
+
+                <p className="mt-1 font-semibold text-gray-950">
+
+                  {hotel.checkInTime || "Not specified"}
+
+                </p>
+
+              </div>
+
+              <div className="rounded-2xl bg-gray-50 p-5">
+
+                <Clock
+
+                  size={22}
+
+                  className="text-gray-700"
+
+                />
+
+                <p className="mt-3 text-sm text-gray-500">
+
+                  Check-out
+
+                </p>
+
+                <p className="mt-1 font-semibold text-gray-950">
+
+                  {hotel.checkOutTime || "Not specified"}
+
+                </p>
+
+              </div>
+
+              <div className="rounded-2xl bg-gray-50 p-5">
+
+                <Phone
+
+                  size={22}
+
+                  className="text-gray-700"
+
+                />
+
+                <p className="mt-3 text-sm text-gray-500">
+
+                  Phone
+
+                </p>
+
+                <p className="mt-1 break-all font-semibold text-gray-950">
+
+                  {hotel.phone || "Not available"}
+
+                </p>
+
+              </div>
+
+              <div className="rounded-2xl bg-gray-50 p-5">
+
+                <Mail
+
+                  size={22}
+
+                  className="text-gray-700"
+
+                />
+
+                <p className="mt-3 text-sm text-gray-500">
+
+                  Email
+
+                </p>
+
+                <p className="mt-1 break-all font-semibold text-gray-950">
+
+                  {hotel.email || "Not available"}
+
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* ROOMS */}
+
+      <section className="mx-auto max-w-7xl px-6 pb-16">
+
+        <div className="mb-7">
+
+          <p className="text-sm font-semibold uppercase tracking-widest text-gray-500">
+
+            StayEase
+
+          </p>
+
+          <h2 className="mt-2 text-3xl font-bold text-gray-950">
+
+            Available Rooms
+
+          </h2>
+
+          <p className="mt-2 text-gray-600">
+
+            Choose a room that fits your stay.
+
+          </p>
+
+        </div>
+
+        {roomsLoading ? (
+
+          <div className="flex items-center justify-center rounded-2xl border border-gray-200 bg-white py-16">
+
+            <Loader2
+
+              size={30}
+
+              className="animate-spin text-gray-900"
+
+            />
+
+            <span className="ml-3 text-gray-600">
+
+              Loading rooms...
+
+            </span>
+
+          </div>
+
+        ) : rooms.length === 0 ? (
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
+
+            <HotelIcon
+
+              size={55}
+
+              className="mx-auto text-gray-400"
+
+            />
+
+            <h3 className="mt-5 text-xl font-bold text-gray-950">
+
+              No rooms available
+
+            </h3>
+
+            <p className="mt-2 text-gray-500">
+
+              There are currently no rooms available for this hotel.
+
+            </p>
+
+          </div>
+
+        ) : (
+
+          <div className="grid gap-6 md:grid-cols-2">
+
+            {rooms.map((room) => (
+
+              <div
+
+                key={room.id}
+
+                className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-lg"
+
+              >
+
+                {/* ROOM IMAGE */}
+
+                <div className="h-52 overflow-hidden bg-gray-200">
+
+                  {room.imageUrl ? (
+
+                    <img
+
+                      src={getImageUrl(room.imageUrl)}
+
+                      alt={room.roomType}
+
+                      className="h-full w-full object-cover"
+
+                    />
+
+                  ) : (
+
+                    <div className="flex h-full items-center justify-center">
+
+                      <HotelIcon
+
+                        size={60}
+
+                        className="text-gray-400"
+
+                      />
+
+                    </div>
+
                   )}
 
                 </div>
 
-                {hotel.starRating && (
-                  <span className="text-gray-300">
-                    {hotel.starRating}
-                    -Star Hotel
-                  </span>
-                )}
+                <div className="p-6">
 
-              </div>
+                  <div className="flex items-start justify-between gap-4">
 
-              {/* DESCRIPTION */}
+                    <div>
 
-              {hotel.description && (
-                <p className="mt-6 max-w-2xl text-lg leading-8 text-gray-300">
-                  {hotel.description}
-                </p>
-              )}
+                      <p className="text-sm font-medium text-gray-500">
 
-              {/* LOCATION */}
+                        Room {room.roomNumber}
 
-              {location && (
-                <div className="mt-6 flex items-start gap-3 text-gray-300">
+                      </p>
 
-                  <MapPin
-                    size={21}
-                    className="mt-1 shrink-0"
-                  />
+                      <h3 className="mt-1 text-xl font-bold text-gray-950">
 
-                  <span>
-                    {location}
-                  </span>
+                        {room.roomType.replaceAll("_", " ")}
 
-                </div>
-              )}
+                      </h3>
 
-            </div>
+                    </div>
 
-          </div>
+                    <span
 
-        </div>
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
 
-      </section>
+                        room.status === "AVAILABLE"
 
-      {/* =================================================
-          HOTEL INFORMATION
-      ================================================= */}
+                          ? "bg-green-100 text-green-700"
 
-      <section className="px-6 py-10">
+                          : "bg-gray-100 text-gray-600"
 
-        <div className="mx-auto max-w-7xl">
+                      }`}
 
-          <div className="grid gap-5 md:grid-cols-3">
+                    >
 
-            {/* CHECK IN */}
+                      {room.status}
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
-
-                  <CalendarDays
-                    size={21}
-                  />
-
-                </div>
-
-                <div>
-
-                  <p className="text-sm text-gray-500">
-                    Check-in
-                  </p>
-
-                  <p className="font-semibold text-gray-900">
-                    {hotel.checkInTime ||
-                      "Not specified"}
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* CHECK OUT */}
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
-
-                  <CalendarDays
-                    size={21}
-                  />
-
-                </div>
-
-                <div>
-
-                  <p className="text-sm text-gray-500">
-                    Check-out
-                  </p>
-
-                  <p className="font-semibold text-gray-900">
-                    {hotel.checkOutTime ||
-                      "Not specified"}
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* CONTACT */}
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
-              <div className="space-y-3">
-
-                {hotel.phone && (
-                  <div className="flex items-center gap-3 text-gray-700">
-
-                    <Phone
-                      size={18}
-                    />
-
-                    <span>
-                      {hotel.phone}
                     </span>
 
                   </div>
-                )}
 
-                {hotel.email && (
-                  <div className="flex items-center gap-3 text-gray-700">
+                  {room.description && (
 
-                    <Mail
-                      size={18}
-                    />
+                    <p className="mt-4 line-clamp-2 text-sm leading-6 text-gray-600">
 
-                    <span className="break-all">
-                      {hotel.email}
-                    </span>
+                      {room.description}
+
+                    </p>
+
+                  )}
+
+                  <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+
+                    <div className="rounded-xl bg-gray-50 p-3">
+
+                      <p className="text-gray-500">
+
+                        Capacity
+
+                      </p>
+
+                      <p className="mt-1 font-semibold text-gray-950">
+
+                        {room.capacity} guests
+
+                      </p>
+
+                    </div>
+
+                    <div className="rounded-xl bg-gray-50 p-3">
+
+                      <p className="text-gray-500">
+
+                        Floor
+
+                      </p>
+
+                      <p className="mt-1 font-semibold text-gray-950">
+
+                        {room.floor}
+
+                      </p>
+
+                    </div>
 
                   </div>
-                )}
 
-              </div>
+                  <div className="mt-6 flex items-center justify-between gap-4">
 
-            </div>
+                    <div>
 
-          </div>
+                      <p className="text-xs text-gray-500">
 
-        </div>
+                        Starting from
 
-      </section>
+                      </p>
 
-      {/* =================================================
-          ROOMS
-      ================================================= */}
+                      <p className="text-2xl font-bold text-gray-950">
 
-      <section className="px-6 pb-16">
+                        ₹{room.pricePerNight}
 
-        <div className="mx-auto max-w-7xl">
+                        <span className="text-sm font-normal text-gray-500">
 
-          {/* HEADER */}
+                          {" "}
 
-          <div className="mb-7">
+                          / night
 
-            <p className="text-sm font-semibold uppercase tracking-wider text-gray-500">
-              StayEase Rooms
-            </p>
+                        </span>
 
-            <h2 className="mt-2 text-3xl font-bold text-gray-900">
-              Available Rooms
-            </h2>
+                      </p>
 
-            <p className="mt-2 text-gray-600">
-              Choose a room that fits your stay.
-            </p>
+                    </div>
 
-          </div>
+                    {room.status === "AVAILABLE" ? (
 
-          {/* =================================================
-              ROOM LOADING
-          ================================================= */}
+                      <button
 
-          {roomsLoading && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
+                        type="button"
 
-              <Loader2
-                size={35}
-                className="mx-auto animate-spin text-gray-800"
-              />
+                        onClick={() =>
 
-              <p className="mt-4 text-gray-600">
-                Loading available rooms...
-              </p>
+                          router.push(
 
-            </div>
-          )}
+                            `/booking?roomId=${room.id}&hotelId=${hotel.id}`
 
-          {/* =================================================
-              NO ROOMS
-          ================================================= */}
+                          )
 
-          {!roomsLoading &&
-            rooms.length === 0 && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
-
-                <BedDouble
-                  size={45}
-                  className="mx-auto text-gray-400"
-                />
-
-                <h3 className="mt-4 text-xl font-semibold text-gray-900">
-                  No rooms available
-                </h3>
-
-                <p className="mt-2 text-gray-600">
-                  There are currently no rooms available for this hotel.
-                </p>
-
-              </div>
-            )}
-
-          {/* =================================================
-              ROOM CARDS
-          ================================================= */}
-
-          {!roomsLoading &&
-            rooms.length > 0 && (
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-
-                {rooms.map(
-                  (room) => {
-
-                    const roomImage =
-                      getImageUrl(
-                        room.imageUrl
-                      );
-
-                    const roomStatus =
-                      String(
-                        room.status ||
-                          ""
-                      ).toUpperCase();
-
-                    const isAvailable =
-                      roomStatus ===
-                      "AVAILABLE";
-
-                    return (
-                      <article
-                        key={
-                          room.id
                         }
-                        className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+
+                        className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
+
                       >
 
-                        {/* ROOM IMAGE */}
+                        <CalendarDays size={17} />
 
-                        <div className="relative h-52 overflow-hidden bg-gray-100">
+                        Book Now
 
-                          {roomImage ? (
-                            <img
-                              src={
-                                roomImage
-                              }
-                              alt={`Room ${room.roomNumber}`}
-                              className="h-full w-full object-cover transition duration-300 hover:scale-105"
-                              onError={(
-                                e
-                              ) => {
-                                e.currentTarget.style.display =
-                                  "none";
-                              }}
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center">
+                      </button>
 
-                              <BedDouble
-                                size={
-                                  60
-                                }
-                                className="text-gray-400"
-                              />
+                    ) : (
 
-                            </div>
-                          )}
+                      <button
 
-                          {/* STATUS */}
+                        type="button"
 
-                          <span
-                            className={`absolute right-4 top-4 rounded-full px-3 py-1 text-xs font-semibold ${
-                              isAvailable
-                                ? "bg-green-100 text-green-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {roomStatus ||
-                              "UNKNOWN"}
-                          </span>
+                        disabled
 
-                        </div>
+                        className="cursor-not-allowed rounded-xl bg-gray-200 px-5 py-3 text-sm font-semibold text-gray-500"
 
-                        {/* ROOM CONTENT */}
+                      >
 
-                        <div className="p-6">
+                        Not Available
 
-                          <div className="flex items-start justify-between gap-4">
+                      </button>
 
-                            <div>
+                    )}
 
-                              <p className="text-sm text-gray-500">
-                                Room{" "}
-                                {
-                                  room.roomNumber
-                                }
-                              </p>
+                  </div>
 
-                              <h3 className="mt-1 text-xl font-bold text-gray-900">
-                                {
-                                  room.roomType ||
-                                    "Standard Room"
-                                }
-                              </h3>
-
-                            </div>
-
-                            <div className="text-right">
-
-                              <p className="text-2xl font-bold text-gray-900">
-                                ₹
-                                {Number(
-                                  room.pricePerNight ||
-                                    0
-                                ).toLocaleString(
-                                  "en-IN"
-                                )}
-                              </p>
-
-                              <p className="text-xs text-gray-500">
-                                per night
-                              </p>
-
-                            </div>
-
-                          </div>
-
-                          {/* ROOM INFO */}
-
-                          <div className="mt-5 grid grid-cols-2 gap-3">
-
-                            <div className="flex items-center gap-2 rounded-xl bg-gray-50 p-3">
-
-                              <Users
-                                size={
-                                  17
-                                }
-                                className="text-gray-500"
-                              />
-
-                              <div>
-
-                                <p className="text-xs text-gray-500">
-                                  Capacity
-                                </p>
-
-                                <p className="text-sm font-semibold">
-                                  {
-                                    room.capacity ||
-                                      "-"
-                                  }{" "}
-                                  Guests
-                                </p>
-
-                              </div>
-
-                            </div>
-
-                            <div className="flex items-center gap-2 rounded-xl bg-gray-50 p-3">
-
-                              <BedDouble
-                                size={
-                                  17
-                                }
-                                className="text-gray-500"
-                              />
-
-                              <div>
-
-                                <p className="text-xs text-gray-500">
-                                  Floor
-                                </p>
-
-                                <p className="text-sm font-semibold">
-                                  {room.floor ??
-                                    "-"}
-                                </p>
-
-                              </div>
-
-                            </div>
-
-                          </div>
-
-                          {/* DESCRIPTION */}
-
-                          {room.description && (
-                            <p className="mt-4 line-clamp-2 text-sm leading-6 text-gray-600">
-                              {
-                                room.description
-                              }
-                            </p>
-                          )}
-
-                          {/* =================================================
-                              BOOK NOW
-                          ================================================= */}
-
-                          <button
-                            type="button"
-                            disabled={
-                              !isAvailable
-                            }
-                            onClick={() => {
-
-                              console.log(
-                                "BOOK NOW ROOM:",
-                                room
-                              );
-
-                              console.log(
-                                "BOOK NOW HOTEL:",
-                                hotel
-                              );
-
-                              if (
-                                !room.id
-                              ) {
-                                console.error(
-                                  "ROOM ID MISSING"
-                                );
-
-                                return;
-                              }
-
-                              if (
-                                !hotel.id
-                              ) {
-                                console.error(
-                                  "HOTEL ID MISSING"
-                                );
-
-                                return;
-                              }
-
-                              const bookingUrl =
-                                `/booking?roomId=${encodeURIComponent(
-                                  String(
-                                    room.id
-                                  )
-                                )}&hotelId=${encodeURIComponent(
-                                  String(
-                                    hotel.id
-                                  )
-                                )}`;
-
-                              console.log(
-                                "BOOKING URL:",
-                                bookingUrl
-                              );
-
-                              router.push(
-                                bookingUrl
-                              );
-                            }}
-                            className={`mt-6 w-full rounded-xl py-3 font-semibold transition ${
-                              isAvailable
-                                ? "bg-black text-white hover:bg-gray-800"
-                                : "cursor-not-allowed bg-gray-200 text-gray-500"
-                            }`}
-                          >
-                            {isAvailable
-                              ? "Book Now"
-                              : "Not Available"}
-                          </button>
-
-                        </div>
-
-                      </article>
-                    );
-                  }
-                )}
+                </div>
 
               </div>
-            )}
 
-        </div>
+            ))}
+
+          </div>
+
+        )}
 
       </section>
 
     </main>
+
   );
+
 }
